@@ -16,8 +16,12 @@ GOOGLE_KEY_PATH = os.getenv('GOOGLE_KEY_PATH')
 SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
 SCHEDULE_SHEET = os.getenv('SCHEDULE_SHEET')
 REQUEST_SHEET = os.getenv('REQUEST_SHEET')
-PUBLIC_SPREADSHEET_ID = os.getenv('PUBLIC_SPREADSHEET_ID')
-PUBLIC_SCHEDULE_SHEET = os.getenv('PUBLIC_SCHEDULE_SHEET')
+EXCHANGE_SHEET = os.getenv('EXCHANGE_SHEET')
+PROXY_SHEET = os.getenv('PROXY_SHEET')
+
+# PUBLIC_SPREADSHEET_ID = os.getenv('PUBLIC_SPREADSHEET_ID')
+# PUBLIC_SCHEDULE_SHEET = os.getenv('PUBLIC_SCHEDULE_SHEET')
+
 
 # Google Sheets APIの認証設定
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -30,6 +34,10 @@ spreadsheet_id = SPREADSHEET_ID
 schedule_sheet = SCHEDULE_SHEET
 # 交換・代行の依頼を保存するシート名
 request_sheet = REQUEST_SHEET
+# 交換が成立したときに保存されるシート名
+exchange_sheet = EXCHANGE_SHEET
+# 代行が成立したときに保存されるシート名
+proxy_sheet = PROXY_SHEET
 # # 公開用スプレッドシートのID
 # public_spreadsheet_id = PUBLIC_SPREADSHEET_ID
 # # 公開用スプレッドシートの掃除当番が記載されたシート名
@@ -80,10 +88,10 @@ async def help_command(interaction: discord.Interaction):
     # ヘルプメッセージをユーザーに送信
     await interaction.response.send_message(help_text, ephemeral=True)
 
-@tree.command(name="hello", description="say hello")
-async def hello(interaction: discord.Interaction):
-    print("hello")
-    await interaction.response.send_message("hello world!", ephemeral=True)
+# @tree.command(name="hello", description="say hello")
+# async def hello(interaction: discord.Interaction):
+#     print("hello")
+#     await interaction.response.send_message("hello world!", ephemeral=True)
 
 
 
@@ -148,17 +156,17 @@ async def request(
 
 @tree.command(name="exchange", description="交換の成立を報告をします")
 @app_commands.describe(
-    intra1="１人目の名前",
     date1="１人目の日付",
+    intra1="１人目の名前",
+    date2="２人目の日付",
     intra2="２人目の名前",
-    date2="２人目の日付"
 )
 async def exchange(
     interaction: discord.Interaction,
-    intra1: str,
     date1: str,
-    intra2: str,
+    intra1: str,
     date2: str,
+    intra2: str,
 ):
     await interaction.response.defer(ephemeral=False)
     try:
@@ -194,6 +202,9 @@ async def exchange(
         row_index_request = next((index for index, row in enumerate(data_request) if row['date'] == date2 and row['logins'] == intra2), None)
         if row_index_request is not None:
             sheet_request.delete_rows(row_index_request + 2)
+        sheet_exchange = gspreadClient.open_by_key(spreadsheet_id).worksheet(exchange_sheet)
+        new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date1, intra1, date2, intra2]
+        sheet_exchange.append_row(new_data)
         # copy2public()
         await interaction.followup.send(f"{date1} {intra1} <-> {date2} {intra2}", ephemeral=False)
     else:
@@ -234,6 +245,9 @@ async def proxy(
         if row_index_request is not None:
             sheet_request.delete_rows(row_index_request + 2)
         # copy2public()
+        sheet_proxy = gspreadClient.open_by_key(spreadsheet_id).worksheet(proxy_sheet)
+        new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, intra1, intra2]
+        sheet_proxy.append_row(new_data)
         await interaction.followup.send(f"{date} {intra1} -> {intra2}", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)

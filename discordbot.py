@@ -16,6 +16,8 @@ GOOGLE_KEY_PATH = os.getenv('GOOGLE_KEY_PATH')
 SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
 SCHEDULE_SHEET = os.getenv('SCHEDULE_SHEET')
 REQUEST_SHEET = os.getenv('REQUEST_SHEET')
+PUBLIC_SPREADSHEET_ID = os.getenv('PUBLIC_SPREADSHEET_ID')
+PUBLIC_SCHEDULE_SHEET = os.getenv('PUBLIC_SCHEDULE_SHEET')
 
 # Google Sheets APIの認証設定
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -28,6 +30,11 @@ spreadsheet_id = SPREADSHEET_ID
 schedule_sheet = SCHEDULE_SHEET
 # 交換・代行の依頼を保存するシート名
 request_sheet = REQUEST_SHEET
+# # 公開用スプレッドシートのID
+# public_spreadsheet_id = PUBLIC_SPREADSHEET_ID
+# # 公開用スプレッドシートの掃除当番が記載されたシート名
+# public_schedule_sheet = PUBLIC_SCHEDULE_SHEET
+
 
 intents = discord.Intents.default()
 intents.guilds = True
@@ -42,6 +49,17 @@ def is_command_channel():
     async def predicate(ctx):
         return ctx.channel.name == "command"  # チャンネル名を"command"に設定
     return commands.check(predicate)
+
+
+# def copy2public():
+#     source_sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
+#     target_sheet = gspreadClient.open_by_key(public_spreadsheet_id).worksheet(public_schedule_sheet)   
+#     # コピー元の1列目と2列目のデータを取得
+#     columns_to_copy = source_sheet.get_values('A:B')  # A列（1列目）からB列（2列目）を取得    
+#     # コピー先にデータを書き込む
+#     target_sheet.update(range_name='A:B', values=columns_to_copy)
+#     #await interaction.followup.send("OK")
+
 
 # @bot.event
 @discordClient.event
@@ -126,7 +144,7 @@ async def request(
             sheet.sort((2, 'asc'), range="A2:F1000")  # ２行目から2列目を基準に昇順にソートします
         await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}\n希望: {type}\nその他: {others}", ephemeral=False)
     else:
-        await interaction.followup.send("日付またはintra名が誤っています")
+        await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
 @tree.command(name="exchange", description="交換の成立を報告をします")
 @app_commands.describe(
@@ -151,8 +169,11 @@ async def exchange(
         await interaction.followup.send("日付はYYYY-MM-DD形式で入力してください", ephemeral=True)
         return
     today = datetime.today().strftime("%Y-%m-%d")
-    if date1 == date2 or date1 < today or date2 < today:
-        await interaction.followup.send("不正な日付です", ephemeral=True)
+    if date1 < today or date2 < today:
+        await interaction.followup.send("過去の日付は対応できません", ephemeral=True)
+        return
+    if date1 == date2:
+        await interaction.followup.send("同一の日付は対応できません", ephemeral=True)
         return
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records() #各行にアクセスできるようにする
@@ -173,6 +194,7 @@ async def exchange(
         row_index_request = next((index for index, row in enumerate(data_request) if row['date'] == date2 and row['logins'] == intra2), None)
         if row_index_request is not None:
             sheet_request.delete_rows(row_index_request + 2)
+        # copy2public()
         await interaction.followup.send(f"{date1} {intra1} <-> {date2} {intra2}", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
@@ -198,7 +220,7 @@ async def proxy(
         return
     today = datetime.today().strftime("%Y-%m-%d")
     if date < today:
-        await interaction.followup.send("不正な日付です", ephemeral=True)
+        await interaction.followup.send("過去の日付は対応できません", ephemeral=True)
         return
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records()
@@ -211,6 +233,7 @@ async def proxy(
         row_index_request = next((index for index, row in enumerate(data_request) if row['date'] == date and row['logins'] == intra1), None)
         if row_index_request is not None:
             sheet_request.delete_rows(row_index_request + 2)
+        # copy2public()
         await interaction.followup.send(f"{date} {intra1} -> {intra2}", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
@@ -250,7 +273,7 @@ async def feedback(
     intras: str,
     details: str,
 ):    
-    await interaction.response.defer()  # 応答を準備
+    await interaction.response.defer(ephemeral=False)  # 応答を準備
 
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records() #各行にアクセスできるようにする
@@ -296,7 +319,7 @@ async def when(
     interaction: discord.Interaction,
     intra: str,
 ):
-    await interaction.response.defer(ephemeral=False)
+    await interaction.response.defer(ephemeral=True)
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records() #各行にアクセスできるようにする
     found_value = ""
@@ -319,7 +342,7 @@ async def who(
     interaction: discord.Interaction,
     date: str,
 ):
-    await interaction.response.defer(ephemeral=False)
+    await interaction.response.defer(ephemeral=True)
     try:
         if any(char.isdigit() for char in date):
             if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):

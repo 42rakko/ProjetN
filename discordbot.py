@@ -77,7 +77,7 @@ async def on_ready():
     await tree.sync() #スラッシュコマンドを同期
 
 
-@tree.command(name="help", description="Shows the list of available commands.")
+@tree.command(name="help", description="利用可能なコマンドリストを表示する")
 async def help_command(interaction: discord.Interaction):
     help_text = "利用できるコマンド:\n\n"
 
@@ -95,10 +95,68 @@ async def help_command(interaction: discord.Interaction):
 
 
 
+
+#掃除の担当日を表示するコマンド whenの実装
+@tree.command(name="when", description="指定するintra名の掃除担当日を表示する")
+@app_commands.describe(
+    intra="名前",
+)
+async def when(
+    interaction: discord.Interaction,
+    intra: str,
+):
+    await interaction.response.defer(ephemeral=True)
+    sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
+    data = sheet.get_all_records() #各行にアクセスできるようにする
+    found_value = ""
+    for row in data:
+        if intra in row['logins']:
+            found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
+    if found_value != "":
+        await interaction.followup.send(f"{found_value}", ephemeral=False)
+    else:
+        await interaction.followup.send("intra名が存在しません")
+
+
+
+#指定日の掃除担当者を表示するコマンド whoの実装
+@tree.command(name="who", description="指定日の担当者を表示する 日付はYYYY-MM-DD形式")
+@app_commands.describe(
+    date="日付 (YYYY-MM-DD)",
+)
+async def who(
+    interaction: discord.Interaction,
+    date: str,
+):
+    await interaction.response.defer(ephemeral=True)
+    try:
+        if any(char.isdigit() for char in date):
+            if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                raise ValueError
+    except ValueError:
+        await interaction.followup.send("日付はYYYY-MM-DD形式で入力してください", ephemeral=True)
+        return
+    
+    sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
+    data = sheet.get_all_records() #各行にアクセスできるようにする
+    
+    found_value = ""
+    for row in data:
+        if date in row['date']:
+            found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
+
+    if found_value != "":
+        await interaction.followup.send(f"{found_value}", ephemeral=False)
+    else:
+        await interaction.followup.send("日付が誤っています")
+
+
+
+
 # @bot.command()
 # @is_command_channel()  # デコレーターを追加
 # async def request(ctx, login_id:str, request_type: str, request_date:str, details:str):
-@tree.command(name="request", description="交換・代行のリクエストをします")
+@tree.command(name="request", description="交換・代行のリクエストをする")
 @app_commands.describe(
     intra="申請者の名前",
     type="リクエストの種類（交換または代行）",
@@ -134,7 +192,7 @@ async def request(
         return
     today = datetime.today().strftime("%Y-%m-%d")
     if date < today:
-        await interaction.followup.send("不正な日付です", ephemeral=True)
+        await interaction.followup.send("過去の日付は登録できません", ephemeral=True)
         return
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records()
@@ -154,7 +212,62 @@ async def request(
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
-@tree.command(name="exchange", description="交換の成立を報告をします")
+
+
+
+@tree.command(name="ls", description="募集中の交換・代行のリクエストリストを表示する")
+@app_commands.describe(
+    gender="性別"
+)
+@app_commands.choices(
+    gender=[
+        app_commands.Choice(name="男性", value="男性"),
+        app_commands.Choice(name="女性", value="女性")
+    ]
+)
+async def list(
+    interaction: discord.Interaction,
+    gender: str,
+):
+    await interaction.response.defer(ephemeral=True)
+    sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(request_sheet)
+    data = sheet.get_all_records()
+    if not data:
+        await interaction.followup.send("募集中のリクエストはありません", ephemeral=True)
+        return
+    messages = []
+    for row in data:
+        if (gender == "男性"): 
+            if row['gender'] == "男性":
+                messages.append(
+                    f"日付: {row['date']}\n"
+                    f"名前: {row['logins']}\n"
+                    f"性別: {row['gender']}\n"
+                    f"希望: {row['type']}\n"
+                    f"その他: {row['others']}\n"
+                )
+        else:
+            if row['gender'] == "女性":
+                messages.append(
+                    f"日付: {row['date']}\n"
+                    f"名前: {row['logins']}\n"
+                    f"性別: {row['gender']}\n"
+                    f"希望: {row['type']}\n"
+                    f"その他: {row['others']}\n"
+                )
+    if not messages:
+        await interaction.followup.send("募集中のリクエストはありません", ephemeral=True)
+        return
+
+    # 各行のデータをまとめ、コードブロックで囲む
+    final_message = "```\n" + "\n\n".join(messages) + "\n```"
+    await interaction.followup.send(final_message, ephemeral=True)
+
+
+
+
+
+@tree.command(name="exchange", description="交換の成立をリストに反映させる")
 @app_commands.describe(
     date1="１人目の日付",
     intra1="１人目の名前",
@@ -210,7 +323,7 @@ async def exchange(
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
-@tree.command(name="proxy", description="代行の成立を報告します")
+@tree.command(name="proxy", description="代行の成立をリストに反映させる")
 @app_commands.describe(
     date="日付",
     intra1="代行してもらう人の名前",
@@ -252,53 +365,7 @@ async def proxy(
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
-@tree.command(name="ls", description="募集中の交換・代行のリクエストを表示します")
-@app_commands.describe(
-    gender="性別"
-)
-@app_commands.choices(
-    gender=[
-        app_commands.Choice(name="男性", value="男性"),
-        app_commands.Choice(name="女性", value="女性")
-    ]
-)
-async def list(
-    interaction: discord.Interaction,
-    gender: str,
-):
-    await interaction.response.defer(ephemeral=True)
-    sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(request_sheet)
-    data = sheet.get_all_records()
-    if not data:
-        await interaction.followup.send("募集中のリクエストはありません", ephemeral=True)
-        return
-    messages = []
-    for row in data:
-        if (gender == "男性"): 
-            if row['gender'] == "男性":
-                messages.append(
-                    f"日付: {row['date']}\n"
-                    f"名前: {row['logins']}\n"
-                    f"性別: {row['gender']}\n"
-                    f"希望: {row['type']}\n"
-                    f"その他: {row['others']}\n"
-                )
-        else:
-            if row['gender'] == "女性":
-                messages.append(
-                    f"日付: {row['date']}\n"
-                    f"名前: {row['logins']}\n"
-                    f"性別: {row['gender']}\n"
-                    f"希望: {row['type']}\n"
-                    f"その他: {row['others']}\n"
-                )
-
-    # 各行のデータをまとめ、コードブロックで囲む
-    final_message = "```\n" + "\n\n".join(messages) + "\n```"
-    await interaction.followup.send(final_message, ephemeral=True)
-
-
-@tree.command(name="feedback", description="掃除の実施を報告します 日付はYYYY-MM-DD形式")
+@tree.command(name="feedback", description="掃除の実施を報告する 日付はYYYY-MM-DD形式")
 @app_commands.describe(
     date="日付",
     intras="名前(複数人のときはspaceで区切る)",
@@ -345,60 +412,5 @@ async def feedback(
         #     await interaction.followup.send(f"名前が誤っています: {none_value}", ephemeral=True)
     else:
         await interaction.followup.send("日付が誤っています", ephemeral=True)
-
-
-#掃除の担当日を表示するコマンド whenの実装
-@tree.command(name="when", description="掃除の担当日を表示します")
-@app_commands.describe(
-    intra="名前",
-)
-async def when(
-    interaction: discord.Interaction,
-    intra: str,
-):
-    await interaction.response.defer(ephemeral=True)
-    sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
-    data = sheet.get_all_records() #各行にアクセスできるようにする
-    found_value = ""
-    for row in data:
-        if intra in row['logins']:
-            found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
-    if found_value != "":
-        await interaction.followup.send(f"{found_value}", ephemeral=False)
-    else:
-        await interaction.followup.send("intra名が存在しません")
-
-
-
-#指定日の掃除担当者を表示するコマンド whoの実装
-@tree.command(name="who", description="指定日の担当者を表示します 日付はYYYY-MM-DD形式")
-@app_commands.describe(
-    date="日付 (YYYY-MM-DD)",
-)
-async def who(
-    interaction: discord.Interaction,
-    date: str,
-):
-    await interaction.response.defer(ephemeral=True)
-    try:
-        if any(char.isdigit() for char in date):
-            if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
-                raise ValueError
-    except ValueError:
-        await interaction.followup.send("日付はYYYY-MM-DD形式で入力してください", ephemeral=True)
-        return
-    
-    sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
-    data = sheet.get_all_records() #各行にアクセスできるようにする
-    
-    found_value = ""
-    for row in data:
-        if date in row['date']:
-            found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
-
-    if found_value != "":
-        await interaction.followup.send(f"{found_value}", ephemeral=False)
-    else:
-        await interaction.followup.send("日付が誤っています")
 
 discordClient.run(DISCORD_TOKEN)

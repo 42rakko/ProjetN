@@ -252,8 +252,20 @@ async def proxy(
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
-@tree.command(name="list", description="募集中の交換・代行のリクエストを表示します")
-async def list(interaction: discord.Interaction):
+@tree.command(name="ls", description="募集中の交換・代行のリクエストを表示します")
+@app_commands.describe(
+    gender="性別"
+)
+@app_commands.choices(
+    gender=[
+        app_commands.Choice(name="男性", value="男性"),
+        app_commands.Choice(name="女性", value="女性")
+    ]
+)
+async def list(
+    interaction: discord.Interaction,
+    gender: str,
+):
     await interaction.response.defer(ephemeral=True)
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(request_sheet)
     data = sheet.get_all_records()
@@ -262,13 +274,24 @@ async def list(interaction: discord.Interaction):
         return
     messages = []
     for row in data:
-        messages.append(
-            f"日付: {row['date']}\n"
-            f"名前: {row['logins']}\n"
-            f"性別: {row['gender']}\n"
-            f"希望: {row['type']}\n"
-            f"その他: {row['others']}\n"
-        )
+        if (gender == "男性"): 
+            if row['gender'] == "男性":
+                messages.append(
+                    f"日付: {row['date']}\n"
+                    f"名前: {row['logins']}\n"
+                    f"性別: {row['gender']}\n"
+                    f"希望: {row['type']}\n"
+                    f"その他: {row['others']}\n"
+                )
+        else:
+            if row['gender'] == "女性":
+                messages.append(
+                    f"日付: {row['date']}\n"
+                    f"名前: {row['logins']}\n"
+                    f"性別: {row['gender']}\n"
+                    f"希望: {row['type']}\n"
+                    f"その他: {row['others']}\n"
+                )
 
     # 各行のデータをまとめ、コードブロックで囲む
     final_message = "```\n" + "\n\n".join(messages) + "\n```"

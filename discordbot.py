@@ -100,8 +100,6 @@ async def help_command(interaction: discord.Interaction):
 #     await interaction.response.send_message("hello world!", ephemeral=True)
 
 
-
-
 #掃除の担当日を表示するコマンド whenの実装
 @tree.command(name="when", description="指定するintra名の掃除担当日を表示する")
 @app_commands.describe(
@@ -117,7 +115,9 @@ async def when(
     found_value = ""
     for row in data:
         if intra in row['logins']:
-            found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
+            logins_list = row['logins'].split()
+            if intra in logins_list:
+                found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
     if found_value != "":
         await interaction.followup.send(f"{found_value}", ephemeral=False)
     else:
@@ -202,11 +202,19 @@ async def request(
         return
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records()
-    row_index = next((index for index, row in enumerate(data) if row['date'] == date and intra in row['logins']), None)
+    row_index = next(
+        (index for index, row in enumerate(data) 
+        if date == row['date'] and intra in row['logins'].split()), 
+        None
+    )
     if row_index is not None:
         sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(request_sheet)
         data = sheet.get_all_records()
-        row_index = next((index for index, row in enumerate(data) if row['date'] == date and intra in row['logins'] == intra), None)
+        row_index = next(
+            (index for index, row in enumerate(data) 
+            if row['date'] == date and intra in row['logins'].split()), 
+            None
+        )
         new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, type, intra, gender, others]
         if row_index is not None:
             cell_range = f"A{row_index + 2}:F{row_index + 2}"
@@ -304,8 +312,16 @@ async def exchange(
         return
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records() #各行にアクセスできるようにする
-    row1_index = next((index for index, row in enumerate(data) if row['date'] == date1 and intra1 in row['logins']), None)
-    row2_index = next((index for index, row in enumerate(data) if row['date'] == date2 and intra2 in row['logins']), None)
+    row1_index = next(
+        (index for index, row in enumerate(data) 
+        if row['date'] == date1 and intra1 in row['logins'].split()), 
+        None
+    )
+    row2_index = next(
+        (index for index, row in enumerate(data) 
+        if row['date'] == date2 and intra2 in row['logins'].split()), 
+        None
+    )
     if row1_index is not None and row2_index is not None:
         row1_logins = data[row1_index]['logins'].replace(intra1, intra2)
         row2_logins = data[row2_index]['logins'].replace(intra2, intra1)  
@@ -392,7 +408,11 @@ async def proxy(
         return
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records()
-    row_index = next((index for index, row in enumerate(data) if row['date'] == date and intra1 in row['logins']), None)
+    row_index = next(
+        (index for index, row in enumerate(data) 
+        if row['date'] == date and intra1 in row['logins'].split()), 
+        None
+        )
     if row_index is not None:
         row_logins = data[row_index]['logins'].replace(intra1, intra2)
         sheet.update_cell(row_index + 2, 2, row_logins)
@@ -489,3 +509,4 @@ async def feedback(
         await interaction.followup.send("日付が誤っています", ephemeral=True)
 
 discordClient.run(DISCORD_TOKEN)
+

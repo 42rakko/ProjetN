@@ -18,7 +18,8 @@ SCHEDULE_SHEET = os.getenv('SCHEDULE_SHEET')
 REQUEST_SHEET = os.getenv('REQUEST_SHEET')
 EXCHANGE_SHEET = os.getenv('EXCHANGE_SHEET')
 PROXY_SHEET = os.getenv('PROXY_SHEET')
-
+STUDENT_SHEET = os.getenv('STUDENT_SHEET')
+DISCORD_USER_SHEET = os.getenv('DISCORD_USER_SHEET')
 # PUBLIC_SPREADSHEET_ID = os.getenv('PUBLIC_SPREADSHEET_ID')
 # PUBLIC_SCHEDULE_SHEET = os.getenv('PUBLIC_SCHEDULE_SHEET')
 
@@ -38,11 +39,16 @@ request_sheet = REQUEST_SHEET
 exchange_sheet = EXCHANGE_SHEET
 # 代行が成立したときに保存されるシート名
 proxy_sheet = PROXY_SHEET
+# すべてのintra名が記載されているシート
+student_sheet = STUDENT_SHEET
+# discordのuser名とintra名をmapしているシート
+discord_sheet = DISCORD_USER_SHEET
+
+
 # # 公開用スプレッドシートのID
 # public_spreadsheet_id = PUBLIC_SPREADSHEET_ID
 # # 公開用スプレッドシートの掃除当番が記載されたシート名
 # public_schedule_sheet = PUBLIC_SCHEDULE_SHEET
-
 
 intents = discord.Intents.default()
 intents.guilds = True
@@ -319,7 +325,38 @@ async def exchange(
         new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date1, intra1, date2, intra2]
         sheet_exchange.append_row(new_data)
         # copy2public()
-        await interaction.followup.send(f"{date1} {intra1} <-> {date2} {intra2}", ephemeral=False)
+
+
+
+        #ここからmention用の文字列を作成する
+        sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(discord_sheet)
+        # 全データを取得
+        data = sheet.get_all_values()  # 全てのデータを2次元リストとして取得
+        # 2〜4列目に文字列が存在するか確認し、1列目の値を取得
+        result1 = []
+        for row in data:
+            # 2〜4列目のどこかに文字列があるか確認
+            if intra1 in row[1:4]:  # 1列目は `row[0]`、2列目以降が `row[1:]`
+                result1.append(row[0])  # 同じ行の1列目を追加
+                break
+        result2 = []
+        for row in data:
+            # 2〜4列目のどこかに文字列があるか確認
+            if intra2 in row[1:4]:  # 1列目は `row[0]`、2列目以降が `row[1:]`
+                result2.append(row[0])  # 同じ行の1列目を追加
+                break
+        mention1 = ""
+        if result1:
+            mention1 = "<@" + result1[0] + ">"
+        else:
+            mention1 = intra1
+        mention2 = ""
+        if result2: 
+            mention2 = "<@" + result2[0] + ">"
+        else:
+            mention2 = intra2
+        #結果を出力する
+        await interaction.followup.send(f"{date1} {intra1} <-> {date2} {intra2}\n5分程度たってから反映を確認してください {mention1} {mention2}", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
@@ -342,6 +379,13 @@ async def proxy(
     except ValueError:
         await interaction.followup.send("日付はYYYY-MM-DD形式で入力してください", ephemeral=False)
         return
+
+    sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(student_sheet)
+    students = sheet.col_values(1)
+    if not intra2 in students:
+        await interaction.followup.send("intra2が不正です", ephemeral=False)
+        return
+
     today = datetime.today().strftime("%Y-%m-%d")
     if date < today:
         await interaction.followup.send("過去の日付は対応できません", ephemeral=True)
@@ -360,8 +404,39 @@ async def proxy(
         # copy2public()
         sheet_proxy = gspreadClient.open_by_key(spreadsheet_id).worksheet(proxy_sheet)
         new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, intra1, intra2]
-        sheet_proxy.append_row(new_data)
-        await interaction.followup.send(f"{date} {intra1} -> {intra2}", ephemeral=False)
+        sheet_proxy.append_row(new_data)        
+
+
+
+        #ここからmention用の文字列を作成する
+        sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(discord_sheet)
+        # 全データを取得
+        data = sheet.get_all_values()  # 全てのデータを2次元リストとして取得
+        # 2〜4列目に文字列が存在するか確認し、1列目の値を取得
+        result1 = []
+        for row in data:
+            # 2〜4列目のどこかに文字列があるか確認
+            if intra1 in row[1:4]:  # 1列目は `row[0]`、2列目以降が `row[1:]`
+                result1.append(row[0])  # 同じ行の1列目を追加
+                break
+        result2 = []
+        for row in data:
+            # 2〜4列目のどこかに文字列があるか確認
+            if intra2 in row[1:4]:  # 1列目は `row[0]`、2列目以降が `row[1:]`
+                result2.append(row[0])  # 同じ行の1列目を追加
+                break
+        mention1 = ""
+        if result1:
+            mention1 = "<@" + result1[0] + ">"
+        else:
+            mention1 = intra1
+        mention2 = ""
+        if result2: 
+            mention2 = "<@" + result2[0] + ">"
+        else:
+            mention2 = intra2
+        #結果を出力する
+        await interaction.followup.send(f" {date} {intra1} -> {intra2}\n5分程度たってから反映を確認してください {mention1} {mention2}", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 

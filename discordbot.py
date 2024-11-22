@@ -15,7 +15,7 @@ DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 GOOGLE_KEY_PATH = os.getenv('GOOGLE_KEY_PATH')
 SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
 SCHEDULE_SHEET = os.getenv('SCHEDULE_SHEET')
-REQUEST_SHEET = os.getenv('REQUEST_SHEET')
+REQUEST_SHEET = os.getenv('REQUEST_SHEET')  
 EXCHANGE_SHEET = os.getenv('EXCHANGE_SHEET')
 PROXY_SHEET = os.getenv('PROXY_SHEET')
 STUDENT_SHEET = os.getenv('STUDENT_SHEET')
@@ -473,6 +473,16 @@ async def feedback(
     details: str,
 ):    
     await interaction.response.defer(ephemeral=False)  # 応答を準備
+    try:
+        if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
+            raise ValueError
+    except ValueError:
+        await interaction.followup.send("日付はYYYY-MM-DD形式で入力してください", ephemeral=False)
+        return
+    today = datetime.today().strftime("%Y-%m-%d")
+    if date > today:
+        await interaction.followup.send("未来の日付は対応できません", ephemeral=True)
+        return
 
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records() #各行にアクセスできるようにする
@@ -484,27 +494,31 @@ async def feedback(
         write_value = ""
         found_value = ""
         none_value = ""
-        row_logins = data[row_index]['logins']
+        # row_logins = data[row_index]['logins']
+
+        st_sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(student_sheet)
+        students = st_sheet.col_values(1)
         for intra in intra_array:
             # if intra in data[row_index]['logins']:
             #     found_value = found_value + intra + " " 
             #     if intra not in data[row_index]['feedback']:
             #         write_value = write_value + intra + " " 
+            #     found_value = found_value + intra + " " 
             # else:
             #     none_value = none_value + intra + " "
-            
-            if intra not in data[row_index]['feedback']:
-                write_value = write_value + intra + " " 
-            found_value = found_value + intra + " " 
-                
+            if not intra in students:
+                none_value = none_value + intra + " "
+            else:
+                found_value = found_value + intra + " "
+                if intra not in data[row_index]['feedback']:
+                    write_value = write_value + intra + " " 
         if write_value != "":
             feedback_data = data[row_index]['feedback']
-            sheet.update_cell(row_index + 2, 3, 
-                              feedback_data.join(write_value))
-        # if found_value != "":
-        await interaction.followup.send(f"feedback:\n日付: {date} \nメンバー: {found_value}\n掃除箇所: {details}", ephemeral=True)       
-        # if none_value != "":
-        #     await interaction.followup.send(f"名前が誤っています: {none_value}", ephemeral=True)
+            sheet.update_cell(row_index + 2, 3, feedback_data + write_value)
+        if found_value != "":
+            await interaction.followup.send(f"feedback:\n日付: {date} \nメンバー: {found_value}\n掃除箇所: {details}", ephemeral=True)
+        if none_value != "":
+            await interaction.followup.send(f"intra名が誤っています: {none_value}", ephemeral=True)
     else:
         await interaction.followup.send("日付が誤っています", ephemeral=True)
 

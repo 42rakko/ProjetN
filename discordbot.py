@@ -22,6 +22,15 @@ STUDENT_SHEET = os.getenv('STUDENT_SHEET')
 DISCORD_USER_SHEET = os.getenv('DISCORD_USER_SHEET')
 # PUBLIC_SPREADSHEET_ID = os.getenv('PUBLIC_SPREADSHEET_ID')
 # PUBLIC_SCHEDULE_SHEET = os.getenv('PUBLIC_SCHEDULE_SHEET')
+DISCORD_SERVER_ID=691903146909237289
+REQUEST_CHANNEL_ID=1227097579347509249
+CONFIRM_CHANNEL_ID=1227910844990361640
+FEEDBACK_CHANNEL_ID=1227097642610200586
+
+DISCORD_SERVER_ID=1300730330520748082
+REQUEST_CHANNEL_ID=1302213729596866591
+CONFIRM_CHANNEL_ID=1302213729596866591
+FEEDBACK_CHANNEL_ID=1302213729596866591
 
 
 # Google Sheets APIの認証設定
@@ -83,7 +92,7 @@ async def on_ready():
     await tree.sync() #スラッシュコマンドを同期
 
 
-@tree.command(name="help", description="利用可能なコマンドリストを表示する")
+@tree.command(name="help", description="　　 利用可能なコマンドリストを表示する")
 async def help_command(interaction: discord.Interaction):
     help_text = "利用できるコマンド:\n\n"
 
@@ -101,7 +110,7 @@ async def help_command(interaction: discord.Interaction):
 
 
 #掃除の担当日を表示するコマンド whenの実装
-@tree.command(name="when", description="指定するintra名の掃除担当日を表示する")
+@tree.command(name="when", description=" 　  指定するintra名の掃除担当日を表示する")
 @app_commands.describe(
     intra="名前",
 )
@@ -119,14 +128,14 @@ async def when(
             if intra in logins_list:
                 found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
     if found_value != "":
-        await interaction.followup.send(f"{found_value}", ephemeral=False)
+        await interaction.followup.send(f"{found_value}\nhttp://bit.ly/3BbrHBs", ephemeral=False)
     else:
         await interaction.followup.send("intra名が存在しません")
 
 
 
 #指定日の掃除担当者を表示するコマンド whoの実装
-@tree.command(name="who", description="指定日の担当者を表示する 日付はYYYY-MM-DD形式")
+@tree.command(name="who", description="　　 指定日の担当者を表示する　　　　　　　日付はYYYY-MM-DD形式")
 @app_commands.describe(
     date="日付 (YYYY-MM-DD)",
 )
@@ -152,7 +161,7 @@ async def who(
             found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
 
     if found_value != "":
-        await interaction.followup.send(f"{found_value}", ephemeral=False)
+        await interaction.followup.send(f"{found_value}\nhttp://bit.ly/3BbrHBs", ephemeral=False)
     else:
         await interaction.followup.send("日付が誤っています")
 
@@ -162,7 +171,7 @@ async def who(
 # @bot.command()
 # @is_command_channel()  # デコレーターを追加
 # async def request(ctx, login_id:str, request_type: str, request_date:str, details:str):
-@tree.command(name="request", description="交換・代行のリクエストをする")
+@tree.command(name="request", description="   交換・代行のリクエストをする　　　　　日付はYYYY-MM-DD形式")
 @app_commands.describe(
     intra="申請者の名前",
     type="リクエストの種類（交換または代行）",
@@ -183,12 +192,18 @@ async def who(
 )
 async def request(
     interaction: discord.Interaction, 
-    intra: str, 
-    type: str, 
     date: str, 
+    intra: str, 
     gender: str,
+    type: str, 
     others: str,
 ):
+    # チャンネル ID をチェック    
+    if interaction.channel_id != REQUEST_CHANNEL_ID:
+        await interaction.response.send_message(f"requestコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}で実行してください", 
+            ephemeral=True
+        )
+        return
     await interaction.response.defer(ephemeral=False)
     try:
         if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
@@ -215,21 +230,22 @@ async def request(
             if row['date'] == date and intra in row['logins'].split()), 
             None
         )
-        new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, type, intra, gender, others]
+        message = await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}\n希望: {type}\nその他: {others}\n\n?o(⁰ꇴ⁰o)三(o⁰ꇴ⁰)o?", ephemeral=False)
+        new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, type, intra, gender, others, str(message.id)]
         if row_index is not None:
-            cell_range = f"A{row_index + 2}:F{row_index + 2}"
+            cell_range = f"A{row_index + 2}:G{row_index + 2}"
             sheet.update([new_data], cell_range)
         else:
             sheet.append_row(new_data)
             sheet.sort((2, 'asc'), range="A2:F1000")  # ２行目から2列目を基準に昇順にソートします
-        await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}\n希望: {type}\nその他: {others}", ephemeral=False)
+
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
 
 
 
-@tree.command(name="ls", description="募集中の交換・代行のリクエストリストを表示する")
+@tree.command(name="ls", description="　　　 募集中の交換・代行リストを表示する")
 @app_commands.describe(
     gender="性別"
 )
@@ -254,34 +270,40 @@ async def list(
         if (gender == "男性"): 
             if row['gender'] == "男性":
                 messages.append(
+                    f"```"
                     f"日付: {row['date']}\n"
                     f"名前: {row['logins']}\n"
                     f"性別: {row['gender']}\n"
                     f"希望: {row['type']}\n"
                     f"その他: {row['others']}\n"
+                    f"```"
+                    f"|ω·）https://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}/{row['message_id']}"
                 )
         else:
             if row['gender'] == "女性":
                 messages.append(
+                    f"```"
                     f"日付: {row['date']}\n"
                     f"名前: {row['logins']}\n"
                     f"性別: {row['gender']}\n"
                     f"希望: {row['type']}\n"
                     f"その他: {row['others']}\n"
+                    f"```"
+                    f"|ω·）https://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}/{row['message_id']}"
                 )
     if not messages:
         await interaction.followup.send("募集中のリクエストはありません", ephemeral=True)
         return
 
     # 各行のデータをまとめ、コードブロックで囲む
-    final_message = "```\n" + "\n\n".join(messages) + "\n```"
+    final_message = "\n" + "\n\n".join(messages) + "\n"
     await interaction.followup.send(final_message, ephemeral=True)
 
 
 
 
 
-@tree.command(name="exchange", description="交換の成立をリストに反映させる")
+@tree.command(name="exchange", description="交換の成立をスケジュールに反映させる　日付はYYYY-MM-DD形式")
 @app_commands.describe(
     date1="１人目の日付",
     intra1="１人目の名前",
@@ -295,6 +317,16 @@ async def exchange(
     date2: str,
     intra2: str,
 ):
+    # チャンネル ID をチェック
+    print (interaction.channel_id)
+    print (CONFIRM_CHANNEL_ID)
+    
+    if interaction.channel_id != CONFIRM_CHANNEL_ID:
+        await interaction.response.send_message(f"exchangeコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{CONFIRM_CHANNEL_ID}で実行してください", 
+            ephemeral=True
+        )
+        return
+
     await interaction.response.defer(ephemeral=False)
     try:
         if date1 != datetime.strptime(date1, "%Y-%m-%d").strftime("%Y-%m-%d") or \
@@ -337,7 +369,7 @@ async def exchange(
         row_index_request = next((index for index, row in enumerate(data_request) if row['date'] == date2 and row['logins'] == intra2), None)
         if row_index_request is not None:
             sheet_request.delete_rows(row_index_request + 2)
-        sheet_exchange = gspreadClient.open_by_key(spreadsheet_id).worksheet(exchange_sheet)
+        sheet_exchange = gspreadClient.open_by_key(SPREADSHEET_ID).worksheet(EXCHANGE_SHEET)
         new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date1, intra1, date2, intra2]
         sheet_exchange.append_row(new_data)
         # copy2public()
@@ -372,11 +404,11 @@ async def exchange(
         else:
             mention2 = intra2
         #結果を出力する
-        await interaction.followup.send(f"{date1} {intra1} <-> {date2} {intra2}\n5分程度たってから反映を確認してください {mention1} {mention2}", ephemeral=False)
+        await interaction.followup.send(f"{date1} {intra1} <-> {date2} {intra2}\nヽ(\\*·ᗜ·)ﾉヽ(·ᗜ·\\* )ﾉ\n\n {mention1} {mention2}\n5分程度たってから反映を確認してください\nhttp://bit.ly/3BbrHBs", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
-@tree.command(name="proxy", description="代行の成立をリストに反映させる")
+@tree.command(name="proxy", description=" 　  代行の成立をスケジュールに反映させる　日付はYYYY-MM-DD形式")
 @app_commands.describe(
     date="日付",
     intra1="代行してもらう人の名前",
@@ -388,6 +420,12 @@ async def proxy(
     intra1: str,
     intra2: str
 ):
+    # チャンネル ID をチェック
+    if interaction.channel_id != CONFIRM_CHANNEL_ID:
+        await interaction.response.send_message(f"proxyコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{CONFIRM_CHANNEL_ID}で実行してください", 
+            ephemeral=True
+        )
+        return
     await interaction.response.defer(ephemeral=False)
     try:
         if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
@@ -456,11 +494,11 @@ async def proxy(
         else:
             mention2 = intra2
         #結果を出力する
-        await interaction.followup.send(f" {date} {intra1} -> {intra2}\n5分程度たってから反映を確認してください {mention1} {mention2}", ephemeral=False)
+        await interaction.followup.send(f" {date} {intra1} -> {intra2}\n(¬_¬”)-cԅ(‾⌣‾ԅ)\n\n5分程度たってから反映を確認してください\n{mention1} {mention2}\nhttp://bit.ly/3BbrHBs", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
-@tree.command(name="feedback", description="掃除の実施を報告する 日付はYYYY-MM-DD形式")
+@tree.command(name="feedback", description="掃除の実施を報告する　　　　　　　　　日付はYYYY-MM-DD形式")
 @app_commands.describe(
     date="日付",
     intras="名前(複数人のときはspaceで区切る)",
@@ -471,7 +509,13 @@ async def feedback(
     date: str,
     intras: str,
     details: str,
-):    
+):
+    # チャンネル ID をチェック
+    if interaction.channel_id != FEEDBACK_CHANNEL_ID:
+        await interaction.response.send_message(f"feedbackコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{FEEDBACK_CHANNEL_ID}で実行してください", 
+            ephemeral=True
+        )
+        return
     await interaction.response.defer(ephemeral=False)  # 応答を準備
     try:
         if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):

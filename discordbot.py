@@ -27,12 +27,6 @@ REQUEST_CHANNEL_ID=1227097579347509249
 CONFIRM_CHANNEL_ID=1227910844990361640
 FEEDBACK_CHANNEL_ID=1227097642610200586
 
-DISCORD_SERVER_ID=1300730330520748082
-REQUEST_CHANNEL_ID=1302213729596866591
-CONFIRM_CHANNEL_ID=1302213729596866591
-FEEDBACK_CHANNEL_ID=1302213729596866591
-
-
 # Google Sheets APIの認証設定
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_KEY_PATH, scope)
@@ -128,7 +122,7 @@ async def when(
             if intra in logins_list:
                 found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
     if found_value != "":
-        await interaction.followup.send(f"{found_value}\nhttp://bit.ly/3BbrHBs", ephemeral=False)
+        await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>", ephemeral=False)
     else:
         await interaction.followup.send("intra名が存在しません")
 
@@ -161,7 +155,7 @@ async def who(
             found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
 
     if found_value != "":
-        await interaction.followup.send(f"{found_value}\nhttp://bit.ly/3BbrHBs", ephemeral=False)
+        await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>", ephemeral=False)
     else:
         await interaction.followup.send("日付が誤っています")
 
@@ -230,7 +224,8 @@ async def request(
             if row['date'] == date and intra in row['logins'].split()), 
             None
         )
-        message = await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}\n希望: {type}\nその他: {others}\n\n?o(⁰ꇴ⁰o)三(o⁰ꇴ⁰)o?", ephemeral=False)
+        message = await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}\n希望: {type}\nその他: {others}", ephemeral=False)
+        # message = await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}\n希望: {type}\nその他: {others}\n\n?o(⁰ꇴ⁰o)三(o⁰ꇴ⁰)o?", ephemeral=False)
         new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, type, intra, gender, others, str(message.id)]
         if row_index is not None:
             cell_range = f"A{row_index + 2}:G{row_index + 2}"
@@ -277,7 +272,7 @@ async def list(
                     f"希望: {row['type']}\n"
                     f"その他: {row['others']}\n"
                     f"```"
-                    f"|ω·）https://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}/{row['message_id']}"
+                    f"https://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}/{row['message_id']}"
                 )
         else:
             if row['gender'] == "女性":
@@ -289,7 +284,7 @@ async def list(
                     f"希望: {row['type']}\n"
                     f"その他: {row['others']}\n"
                     f"```"
-                    f"|ω·）https://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}/{row['message_id']}"
+                    f"https://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}/{row['message_id']}"
                 )
     if not messages:
         await interaction.followup.send("募集中のリクエストはありません", ephemeral=True)
@@ -318,9 +313,6 @@ async def exchange(
     intra2: str,
 ):
     # チャンネル ID をチェック
-    print (interaction.channel_id)
-    print (CONFIRM_CHANNEL_ID)
-    
     if interaction.channel_id != CONFIRM_CHANNEL_ID:
         await interaction.response.send_message(f"exchangeコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{CONFIRM_CHANNEL_ID}で実行してください", 
             ephemeral=True
@@ -404,7 +396,8 @@ async def exchange(
         else:
             mention2 = intra2
         #結果を出力する
-        await interaction.followup.send(f"{date1} {intra1} <-> {date2} {intra2}\nヽ(\\*·ᗜ·)ﾉヽ(·ᗜ·\\* )ﾉ\n\n {mention1} {mention2}\n5分程度たってから反映を確認してください\nhttp://bit.ly/3BbrHBs", ephemeral=False)
+        await interaction.followup.send(f"{date1} {intra1} <-> {date2} {intra2}\n\n {mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
+        # await interaction.followup.send(f"{date1} {intra1} <-> {date2} {intra2}\nヽ(\\*·ᗜ·)ﾉヽ(·ᗜ·\\* )ﾉ\n\n {mention1} {mention2}\n5分程度たってから反映を確認してください\nhttp://bit.ly/3BbrHBs", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
@@ -494,7 +487,8 @@ async def proxy(
         else:
             mention2 = intra2
         #結果を出力する
-        await interaction.followup.send(f" {date} {intra1} -> {intra2}\n(¬_¬”)-cԅ(‾⌣‾ԅ)\n\n5分程度たってから反映を確認してください\n{mention1} {mention2}\nhttp://bit.ly/3BbrHBs", ephemeral=False)
+        await interaction.followup.send(f" {date} {intra1} -> {intra2}\n\n{mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
+        # await interaction.followup.send(f" {date} {intra1} -> {intra2}\n(¬_¬”)-cԅ(‾⌣‾ԅ)\n\n5分程度たってから反映を確認してください\n{mention1} {mention2}\nhttp://bit.ly/3BbrHBs", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 

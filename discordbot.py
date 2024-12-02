@@ -18,6 +18,7 @@ SCHEDULE_SHEET = os.getenv('SCHEDULE_SHEET')
 REQUEST_SHEET = os.getenv('REQUEST_SHEET')  
 EXCHANGE_SHEET = os.getenv('EXCHANGE_SHEET')
 PROXY_SHEET = os.getenv('PROXY_SHEET')
+FEEDBACK_SHEET = os.getenv('FEEDBACK_SHEET')
 STUDENT_SHEET = os.getenv('STUDENT_SHEET')
 DISCORD_USER_SHEET = os.getenv('DISCORD_USER_SHEET')
 # PUBLIC_SPREADSHEET_ID = os.getenv('PUBLIC_SPREADSHEET_ID')
@@ -42,6 +43,8 @@ request_sheet = REQUEST_SHEET
 exchange_sheet = EXCHANGE_SHEET
 # 代行が成立したときに保存されるシート名
 proxy_sheet = PROXY_SHEET
+# フィードバックが保存されるシート名
+feedback_sheet = FEEDBACK_SHEET
 # すべてのintra名が記載されているシート
 student_sheet = STUDENT_SHEET
 # discordのuser名とintra名をmapしているシート
@@ -177,7 +180,7 @@ async def who(
     type=[
         app_commands.Choice(name="交換", value="交換"),
         app_commands.Choice(name="代行", value="代行"),
-        app_commands.Choice(name="交換または代行", value="交換または代行")
+        app_commands.Choice(name="交換または代行", value="交換または代行"),
     ],
     gender=[
         app_commands.Choice(name="男性", value="男性"),
@@ -193,11 +196,11 @@ async def request(
     others: str,
 ):
     # チャンネル ID をチェック    
-    if interaction.channel_id != REQUEST_CHANNEL_ID:
-        await interaction.response.send_message(f"requestコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}で実行してください", 
-            ephemeral=True
-        )
-        return
+    # if interaction.channel_id != REQUEST_CHANNEL_ID:
+    #     await interaction.response.send_message(f"requestコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}で実行してください", 
+    #         ephemeral=True
+    #     )
+    #     return
     await interaction.response.defer(ephemeral=False)
     try:
         if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
@@ -237,8 +240,45 @@ async def request(
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
-
-
+@tree.command(name="rm", description="リクエストを削除する")
+@app_commands.describe(
+    date="日付",
+    intra="申請者の名前",
+)
+async def rm(
+    interaction: discord.Interaction, 
+    date: str, 
+    intra: str, 
+):
+    # チャンネル ID をチェック    
+    # if interaction.channel_id != REQUEST_CHANNEL_ID:
+    #     await interaction.response.send_message(f"requestコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}で実行してください", 
+    #         ephemeral=True
+    #     )
+    #     return
+    await interaction.response.defer(ephemeral=True)
+    try:
+        if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
+            raise ValueError
+    except ValueError:
+        await interaction.followup.send("日付はYYYY-MM-DD形式で入力してください", ephemeral=True)
+        return
+    today = datetime.today().strftime("%Y-%m-%d")
+    if date < today:
+        await interaction.followup.send("過去の日付は登録できません", ephemeral=True)
+        return
+    sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(request_sheet)
+    data = sheet.get_all_records()
+    row_index = next(
+        (index for index, row in enumerate(data) 
+        if row['date'] == date and intra in row['logins'].split()), 
+        None
+    )
+    if row_index is not None:
+        sheet.delete_rows(row_index + 2)
+        await interaction.followup.send("リクエストを削除しました", ephemeral=True)
+    else:
+        await interaction.followup.send("そのリクエストは存在しません", ephemeral=True)        
 
 @tree.command(name="ls", description="　　　 募集中の交換・代行リストを表示する")
 @app_commands.describe(
@@ -505,11 +545,11 @@ async def feedback(
     details: str,
 ):
     # チャンネル ID をチェック
-    if interaction.channel_id != FEEDBACK_CHANNEL_ID:
-        await interaction.response.send_message(f"feedbackコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{FEEDBACK_CHANNEL_ID}で実行してください", 
-            ephemeral=True
-        )
-        return
+    # if interaction.channel_id != FEEDBACK_CHANNEL_ID:
+    #     await interaction.response.send_message(f"feedbackコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{FEEDBACK_CHANNEL_ID}で実行してください", 
+    #         ephemeral=True
+    #     )
+    #     return
     await interaction.response.defer(ephemeral=False)  # 応答を準備
     try:
         if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
@@ -553,6 +593,9 @@ async def feedback(
         if write_value != "":
             feedback_data = data[row_index]['feedback']
             sheet.update_cell(row_index + 2, 3, feedback_data + write_value)
+            sheet_feedback = gspreadClient.open_by_key(spreadsheet_id).worksheet(feedback_sheet)
+            new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, intras, details]
+            sheet_feedback.append_row(new_data) 
         if found_value != "":
             await interaction.followup.send(f"feedback:\n日付: {date} \nメンバー: {found_value}\n掃除箇所: {details}", ephemeral=True)
         if none_value != "":

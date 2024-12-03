@@ -6,6 +6,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import re
 
 
 # .envファイルを読み込む
@@ -18,6 +19,7 @@ SCHEDULE_SHEET = os.getenv('SCHEDULE_SHEET')
 REQUEST_SHEET = os.getenv('REQUEST_SHEET')  
 EXCHANGE_SHEET = os.getenv('EXCHANGE_SHEET')
 PROXY_SHEET = os.getenv('PROXY_SHEET')
+FEEDBACK_SHEET = os.getenv('FEEDBACK_SHEET')
 STUDENT_SHEET = os.getenv('STUDENT_SHEET')
 DISCORD_USER_SHEET = os.getenv('DISCORD_USER_SHEET')
 # PUBLIC_SPREADSHEET_ID = os.getenv('PUBLIC_SPREADSHEET_ID')
@@ -42,6 +44,8 @@ request_sheet = REQUEST_SHEET
 exchange_sheet = EXCHANGE_SHEET
 # 代行が成立したときに保存されるシート名
 proxy_sheet = PROXY_SHEET
+# フィードバックが保存されるシート名
+feedback_sheet = FEEDBACK_SHEET
 # すべてのintra名が記載されているシート
 student_sheet = STUDENT_SHEET
 # discordのuser名とintra名をmapしているシート
@@ -67,6 +71,32 @@ def is_command_channel():
         return ctx.channel.name == "command"  # チャンネル名を"command"に設定
     return commands.check(predicate)
 
+# MM-DD形式の日付に適切なYYYY-を付加して返す
+def add_year(input_date: str) -> str:
+    # 現在の日付を取得
+    today = datetime.today()
+    current_year = today.year
+    current_month = today.month
+    input_month = 0
+
+    #前の２桁（月）をとる
+    match = re.match(r"^\d{2}", input_date)
+    if match:
+        input_month = int(match.group())
+    if input_month > 12 or input_month < 1:
+        return ("")
+    # 年を調整
+    if current_month >= 9 and 1 <= input_month <= 4:
+        # 当日が9-12月で、入力が1-4月 → 翌年
+        target_year = current_year + 1
+    elif current_month <= 4 and 9 <= input_month <= 12:
+        # 当日が1-4月で、入力が9-12月 → 前年
+        target_year = current_year - 1
+    else:
+        # それ以外 → 当年
+        target_year = current_year
+    # yyyy-mm-dd形式で返す
+    return f"{target_year}-{input_date}"
 
 # def copy2public():
 #     source_sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
@@ -76,7 +106,6 @@ def is_command_channel():
 #     # コピー先にデータを書き込む
 #     target_sheet.update(range_name='A:B', values=columns_to_copy)
 #     #await interaction.followup.send("OK")
-
 
 # @bot.event
 @discordClient.event
@@ -106,7 +135,7 @@ async def help_command(interaction: discord.Interaction):
 #掃除の担当日を表示するコマンド whenの実装
 @tree.command(name="when", description=" 　  指定するintra名の掃除担当日を表示する")
 @app_commands.describe(
-    intra="名前",
+    intra="intra名",
 )
 async def when(
     interaction: discord.Interaction,
@@ -124,14 +153,14 @@ async def when(
     if found_value != "":
         await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>", ephemeral=False)
     else:
-        await interaction.followup.send("intra名が存在しません")
+        await interaction.followup.send("担当のアサインがありません")
 
 
 
 #指定日の掃除担当者を表示するコマンド whoの実装
-@tree.command(name="who", description="　　 指定日の担当者を表示する　　　　　　　日付はYYYY-MM-DD形式")
+@tree.command(name="who", description="　　 指定日の担当者を表示する　　　　　　　日付はMM-DD形式")
 @app_commands.describe(
-    date="日付 (YYYY-MM-DD)",
+    date="日付 (MM-DD)",
 )
 async def who(
     interaction: discord.Interaction,
@@ -139,11 +168,16 @@ async def who(
 ):
     await interaction.response.defer(ephemeral=True)
     try:
+        pattern = r"^\d{2}-\d{2}$"
+        if not bool(re.match(pattern, date)):
+            await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+            return
         if any(char.isdigit() for char in date):
+            date = add_year(date)
             if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
                 raise ValueError
     except ValueError:
-        await interaction.followup.send("日付はYYYY-MM-DD形式で入力してください", ephemeral=True)
+        await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
         return
     
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
@@ -157,27 +191,25 @@ async def who(
     if found_value != "":
         await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>", ephemeral=False)
     else:
-        await interaction.followup.send("日付が誤っています")
-
-
+        await interaction.followup.send("当日の担当はありません")
 
 
 # @bot.command()
 # @is_command_channel()  # デコレーターを追加
 # async def request(ctx, login_id:str, request_type: str, request_date:str, details:str):
-@tree.command(name="request", description="   交換・代行のリクエストをする　　　　　日付はYYYY-MM-DD形式")
+@tree.command(name="request", description="   交換・代行のリクエストをする　　　　　日付はMM-DD形式")
 @app_commands.describe(
-    intra="申請者の名前",
-    type="リクエストの種類（交換または代行）",
-    date="希望する日付 (YYYY-MM-DD)",
+    date="日付 (MM-DD)",
+    intra="intra名",
     gender="性別",
+    type="リクエストの種類（交換または代行）",
     others="その他（交換希望日等）"
 )
 @app_commands.choices(
     type=[
         app_commands.Choice(name="交換", value="交換"),
         app_commands.Choice(name="代行", value="代行"),
-        app_commands.Choice(name="交換または代行", value="交換または代行")
+        app_commands.Choice(name="交換または代行", value="交換または代行"),
     ],
     gender=[
         app_commands.Choice(name="男性", value="男性"),
@@ -200,10 +232,16 @@ async def request(
         return
     await interaction.response.defer(ephemeral=False)
     try:
-        if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
-            raise ValueError
+        pattern = r"^\d{2}-\d{2}$"
+        if not bool(re.match(pattern, date)):
+            await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+            return
+        if any(char.isdigit() for char in date):
+            date = add_year(date)
+            if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                raise ValueError
     except ValueError:
-        await interaction.followup.send("日付はYYYY-MM-DD形式で入力してください", ephemeral=True)
+        await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
         return
     today = datetime.today().strftime("%Y-%m-%d")
     if date < today:
@@ -224,7 +262,7 @@ async def request(
             if row['date'] == date and intra in row['logins'].split()), 
             None
         )
-        message = await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}\n希望: {type}\nその他: {others}", ephemeral=False)
+        message = await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}\n希望: {type}\n{others}", ephemeral=False)
         # message = await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}\n希望: {type}\nその他: {others}\n\n?o(⁰ꇴ⁰o)三(o⁰ꇴ⁰)o?", ephemeral=False)
         new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, type, intra, gender, others, str(message.id)]
         if row_index is not None:
@@ -233,10 +271,56 @@ async def request(
         else:
             sheet.append_row(new_data)
             sheet.sort((2, 'asc'), range="A2:F1000")  # ２行目から2列目を基準に昇順にソートします
-
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
+
+@tree.command(name="rm", description="　   　リクエストを削除する　　　　　　　　　日付はMM-DD形式")
+@app_commands.describe(
+    date="日付 (MM-DD)",
+    intra="intra名",
+)
+async def rm(
+    interaction: discord.Interaction, 
+    date: str, 
+    intra: str, 
+):
+    # チャンネル ID をチェック
+    if interaction.channel_id != REQUEST_CHANNEL_ID:
+        await interaction.response.send_message(f"requestコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}で実行してください", 
+            ephemeral=True
+        )
+        return
+    await interaction.response.defer(ephemeral=True)
+    try:
+        pattern = r"^\d{2}-\d{2}$"
+        if not bool(re.match(pattern, date)):
+            await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+            return
+        if any(char.isdigit() for char in date):
+            date = add_year(date)
+            if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                raise ValueError
+    except ValueError:
+        await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
+        return
+    
+    today = datetime.today().strftime("%Y-%m-%d")
+    if date < today:
+        await interaction.followup.send("過去の日付は登録できません", ephemeral=True)
+        return
+    sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(request_sheet)
+    data = sheet.get_all_records()
+    row_index = next(
+        (index for index, row in enumerate(data) 
+        if row['date'] == date and intra in row['logins'].split()), 
+        None
+    )
+    if row_index is not None:
+        sheet.delete_rows(row_index + 2)
+        await interaction.followup.send("リクエストを削除しました", ephemeral=True)
+    else:
+        await interaction.followup.send("そのリクエストは存在しません", ephemeral=True)        
 
 
 
@@ -270,7 +354,7 @@ async def list(
                     f"名前: {row['logins']}\n"
                     f"性別: {row['gender']}\n"
                     f"希望: {row['type']}\n"
-                    f"その他: {row['others']}\n"
+                    f"{row['others']}\n"
                     f"```"
                     f"https://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}/{row['message_id']}"
                 )
@@ -282,7 +366,7 @@ async def list(
                     f"名前: {row['logins']}\n"
                     f"性別: {row['gender']}\n"
                     f"希望: {row['type']}\n"
-                    f"その他: {row['others']}\n"
+                    f"{row['others']}\n"
                     f"```"
                     f"https://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}/{row['message_id']}"
                 )
@@ -295,15 +379,12 @@ async def list(
     await interaction.followup.send(final_message, ephemeral=True)
 
 
-
-
-
-@tree.command(name="exchange", description="交換の成立をスケジュールに反映させる　日付はYYYY-MM-DD形式")
+@tree.command(name="exchange", description="交換の成立をスケジュールに反映させる　日付はMM-DD形式")
 @app_commands.describe(
-    date1="１人目の日付",
-    intra1="１人目の名前",
-    date2="２人目の日付",
-    intra2="２人目の名前",
+    date1="1人目の日付 (MM-DD)",
+    intra1="1人目のintra名",
+    date2="2人目の日付 (MM-DD)",
+    intra2="2人目のintra名",
 )
 async def exchange(
     interaction: discord.Interaction,
@@ -318,15 +399,27 @@ async def exchange(
             ephemeral=True
         )
         return
-
     await interaction.response.defer(ephemeral=False)
     try:
-        if date1 != datetime.strptime(date1, "%Y-%m-%d").strftime("%Y-%m-%d") or \
-           date2 != datetime.strptime(date2, "%Y-%m-%d").strftime("%Y-%m-%d"):
-            raise ValueError
+        pattern = r"^\d{2}-\d{2}$"
+        if not bool(re.match(pattern, date1)):
+            await interaction.followup.send("date1はMM-DD形式で入力してください", ephemeral=True)
+            return
+        if not bool(re.match(pattern, date2)):
+            await interaction.followup.send("date2はMM-DD形式で入力してください", ephemeral=True)
+            return
+        if any(char.isdigit() for char in date1):
+            date1 = add_year(date1)
+            if date1 != datetime.strptime(date1, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                raise ValueError
+        if any(char.isdigit() for char in date2):
+            date2 = add_year(date2)
+            if date2 != datetime.strptime(date2, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                raise ValueError        
     except ValueError:
-        await interaction.followup.send("日付はYYYY-MM-DD形式で入力してください", ephemeral=True)
+        await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
         return
+
     today = datetime.today().strftime("%Y-%m-%d")
     if date1 < today or date2 < today:
         await interaction.followup.send("過去の日付は対応できません", ephemeral=True)
@@ -366,8 +459,6 @@ async def exchange(
         sheet_exchange.append_row(new_data)
         # copy2public()
 
-
-
         #ここからmention用の文字列を作成する
         sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(discord_sheet)
         # 全データを取得
@@ -401,11 +492,12 @@ async def exchange(
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
-@tree.command(name="proxy", description=" 　  代行の成立をスケジュールに反映させる　日付はYYYY-MM-DD形式")
+
+@tree.command(name="proxy", description=" 　  代行の成立をスケジュールに反映させる　日付はMM-DD形式")
 @app_commands.describe(
-    date="日付",
-    intra1="代行してもらう人の名前",
-    intra2="代行する人の名前"
+    date="日付 (MM-DD)",
+    intra1="代行してもらう人のintra名",
+    intra2="代行する人のintra名"
 )
 async def proxy(
     interaction: discord.Interaction,
@@ -421,12 +513,18 @@ async def proxy(
         return
     await interaction.response.defer(ephemeral=False)
     try:
-        if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
-            raise ValueError
+        pattern = r"^\d{2}-\d{2}$"
+        if not bool(re.match(pattern, date)):
+            await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+            return
+        if any(char.isdigit() for char in date):
+            date = add_year(date)
+            if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                raise ValueError
     except ValueError:
-        await interaction.followup.send("日付はYYYY-MM-DD形式で入力してください", ephemeral=False)
+        await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
         return
-
+    
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(student_sheet)
     students = sheet.col_values(1)
     if not intra2 in students:
@@ -456,8 +554,6 @@ async def proxy(
         sheet_proxy = gspreadClient.open_by_key(spreadsheet_id).worksheet(proxy_sheet)
         new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, intra1, intra2]
         sheet_proxy.append_row(new_data)        
-
-
 
         #ここからmention用の文字列を作成する
         sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(discord_sheet)
@@ -492,10 +588,11 @@ async def proxy(
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
-@tree.command(name="feedback", description="掃除の実施を報告する　　　　　　　　　日付はYYYY-MM-DD形式")
+
+@tree.command(name="feedback", description="掃除の実施を報告する　　　　　　　　　日付はMM-DD形式（当日は'-'で省略可能）")
 @app_commands.describe(
-    date="日付",
-    intras="名前(複数人のときはspaceで区切る)",
+    date="日付 (MM-DD 当日は'-'で省略可能)",
+    intras="intra名(複数人のときはspaceで区切る)",
     details="掃除箇所など自由記述"
 )
 async def feedback(
@@ -511,12 +608,22 @@ async def feedback(
         )
         return
     await interaction.response.defer(ephemeral=False)  # 応答を準備
-    try:
-        if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
-            raise ValueError
-    except ValueError:
-        await interaction.followup.send("日付はYYYY-MM-DD形式で入力してください", ephemeral=False)
-        return
+    if date == "-":
+        date = datetime.today().strftime("%Y-%m-%d")    
+    else:
+        try:
+            pattern = r"^\d{2}-\d{2}$"
+            if not bool(re.match(pattern, date)):
+                await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+                return
+            if any(char.isdigit() for char in date):
+                date = add_year(date)
+                if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                    raise ValueError
+        except ValueError:
+            await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
+            return
+    
     today = datetime.today().strftime("%Y-%m-%d")
     if date > today:
         await interaction.followup.send("未来の日付は対応できません", ephemeral=True)
@@ -554,7 +661,10 @@ async def feedback(
             feedback_data = data[row_index]['feedback']
             sheet.update_cell(row_index + 2, 3, feedback_data + write_value)
         if found_value != "":
-            await interaction.followup.send(f"feedback:\n日付: {date} \nメンバー: {found_value}\n掃除箇所: {details}", ephemeral=True)
+            sheet_feedback = gspreadClient.open_by_key(spreadsheet_id).worksheet(feedback_sheet)
+            new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, found_value, details]
+            sheet_feedback.append_row(new_data) 
+            await interaction.followup.send(f"feedback:\n日付: {date} \nメンバー: {found_value}\n{details}", ephemeral=True)
         if none_value != "":
             await interaction.followup.send(f"intra名が誤っています: {none_value}", ephemeral=True)
     else:

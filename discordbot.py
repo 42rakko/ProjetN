@@ -151,9 +151,9 @@ async def when(
             if intra in logins_list:
                 found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
     if found_value != "":
-        await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>", ephemeral=False)
+        await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>", ephemeral=True)
     else:
-        await interaction.followup.send("担当のアサインがありません")
+        await interaction.followup.send("intra名が存在しないか担当のアサインがありません")
 
 
 
@@ -189,7 +189,7 @@ async def who(
             found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
 
     if found_value != "":
-        await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>", ephemeral=False)
+        await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>", ephemeral=True)
     else:
         await interaction.followup.send("当日の担当はありません")
 
@@ -287,7 +287,7 @@ async def rm(
 ):
     # チャンネル ID をチェック
     if interaction.channel_id != REQUEST_CHANNEL_ID:
-        await interaction.response.send_message(f"requestコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}で実行してください", 
+        await interaction.response.send_message(f"rmコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}で実行してください", 
             ephemeral=True
         )
         return
@@ -528,7 +528,7 @@ async def proxy(
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(student_sheet)
     students = sheet.col_values(1)
     if not intra2 in students:
-        await interaction.followup.send("intra2が不正です", ephemeral=False)
+        await interaction.followup.send("intra2が不正です", ephemeral=True)
         return
 
     today = datetime.today().strftime("%Y-%m-%d")
@@ -664,7 +664,7 @@ async def feedback(
             sheet_feedback = gspreadClient.open_by_key(spreadsheet_id).worksheet(feedback_sheet)
             new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, found_value, details]
             sheet_feedback.append_row(new_data) 
-            await interaction.followup.send(f"feedback:\n日付: {date} \nメンバー: {found_value}\n{details}", ephemeral=True)
+            await interaction.followup.send(f"feedback:\n日付: {date} \nメンバー: {found_value}\n{details}", ephemeral=False)
         if none_value != "":
             await interaction.followup.send(f"intra名が誤っています: {none_value}", ephemeral=True)
     else:

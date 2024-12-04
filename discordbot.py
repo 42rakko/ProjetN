@@ -270,7 +270,7 @@ async def request(
             sheet.update([new_data], cell_range)
         else:
             sheet.append_row(new_data)
-            sheet.sort((2, 'asc'), range="A2:F1000")  # ２行目から2列目を基準に昇順にソートします
+            sheet.sort((2, 'asc'), range="A2:G1000")  # ２行目から2列目を基準に昇順にソートします
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 

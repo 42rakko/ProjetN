@@ -656,10 +656,12 @@ async def feedback(
             else:
                 found_value = found_value + intra + " "
                 if intra not in data[row_index]['feedback']:
-                    write_value = write_value + intra + " " 
+                    write_value = write_value + intra + " "
         if write_value != "":
             feedback_data = data[row_index]['feedback']
-            sheet.update_cell(row_index + 2, 3, feedback_data + write_value)
+            feedback_data = feedback_data + " " + write_value
+            feedback_data = re.sub(r'\s{2,}', ' ', feedback_data)
+            sheet.update_cell(row_index + 2, 3, feedback_data)
         if found_value != "":
             sheet_feedback = gspreadClient.open_by_key(spreadsheet_id).worksheet(feedback_sheet)
             new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, found_value, details]

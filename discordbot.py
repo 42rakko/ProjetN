@@ -368,19 +368,18 @@ async def list(
             continue  # 過去の日付はスキップ
         # 日本語の曜日を取得
         weekday_jp = WEEKDAYS_JP[row_date.weekday()]
-
-        if ((gender == "男性" and row['gender'] == "男性") or (gender == "女性" and row['gender'] == "女性")) :
-                
-                messages.append(
-                    f"```"
-                    f"日付: {row['date']}（{weekday_jp}）\n"
-                    f"名前: {row['logins']}\n"
-                    f"性別: {row['gender']}\n"
-                    f"希望: {row['type']}\n"
-                    f"{row['others']}\n"
-                    f"```"
-                    f"https://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}/{row['message_id']}"
-                )
+        
+        if (gender == row['gender']):
+            messages.append(
+                f"```"
+                f"日付: {row['date']}（{weekday_jp}）\n"
+                f"名前: {row['logins']}\n"
+                f"性別: {row['gender']}\n"
+                f"希望: {row['type']}\n"
+                f"{row['others']}\n"
+                f"```"
+                f"https://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}/{row['message_id']}"
+            )
     if not messages:
         await interaction.followup.send("募集中のリクエストはありません", ephemeral=True)
         return
@@ -499,7 +498,6 @@ async def exchange(
         else:
             mention2 = intra2
         #結果を出力する
-        # 日付の比較: date を datetime オブジェクトに変換
         try:
             row_date1 = datetime.strptime(date1, "%Y-%m-%d").date()
             # 日本語の曜日を取得
@@ -610,7 +608,6 @@ async def proxy(
         else:
             mention2 = intra2
         #結果を出力する
-                # 日付の比較: date を datetime オブジェクトに変換
         try:
             row_date = datetime.strptime(date, "%Y-%m-%d").date()
             # 日本語の曜日を取得
@@ -702,7 +699,6 @@ async def feedback(
             new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, found_value, details]
             sheet_feedback.append_row(new_data) 
 
-            # 日付の比較: date を datetime オブジェクトに変換
             try:
                 row_date = datetime.strptime(date, "%Y-%m-%d").date()
                 # 日本語の曜日を取得

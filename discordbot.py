@@ -51,6 +51,9 @@ student_sheet = STUDENT_SHEET
 # discordのuser名とintra名をmapしているシート
 discord_sheet = DISCORD_USER_SHEET
 
+# 日本語の曜日を取得するための辞書
+WEEKDAYS_JP = ["月", "火", "水", "木", "金", "土", "日"]
+
 
 # # 公開用スプレッドシートのID
 # public_spreadsheet_id = PUBLIC_SPREADSHEET_ID
@@ -230,6 +233,7 @@ async def request(
             ephemeral=True
         )
         return
+
     await interaction.response.defer(ephemeral=False)
     try:
         pattern = r"^\d{2}-\d{2}$"
@@ -262,7 +266,15 @@ async def request(
             if row['date'] == date and intra in row['logins'].split()), 
             None
         )
-        message = await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}\n希望: {type}\n{others}", ephemeral=False)
+
+        # 日付の比較: date を datetime オブジェクトに変換
+        try:
+            row_date = datetime.strptime(date, "%Y-%m-%d").date()
+            # 日本語の曜日を取得
+            weekday_jp = WEEKDAYS_JP[row_date.weekday()]
+        except ValueError:
+            weekday_jp = "-"
+        message = await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}（{weekday_jp}）\n希望: {type}\n{others}", ephemeral=False)
         # message = await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}\n希望: {type}\nその他: {others}\n\n?o(⁰ꇴ⁰o)三(o⁰ꇴ⁰)o?", ephemeral=False)
         new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, type, intra, gender, others, str(message.id)]
         if row_index is not None:
@@ -345,24 +357,23 @@ async def list(
         await interaction.followup.send("募集中のリクエストはありません", ephemeral=True)
         return
     messages = []
+    today = datetime.today().date()  # 今日の日付を取得
     for row in data:
-        if (gender == "男性"): 
-            if row['gender'] == "男性":
+       # 日付の比較: row['date'] を datetime オブジェクトに変換
+        try:
+            row_date = datetime.strptime(row['date'], "%Y-%m-%d").date()
+        except ValueError:
+            continue  # 日付の形式が正しくない場合はスキップ
+        if row_date < today:
+            continue  # 過去の日付はスキップ
+        # 日本語の曜日を取得
+        weekday_jp = WEEKDAYS_JP[row_date.weekday()]
+
+        if ((gender == "男性" and row['gender'] == "男性") or (gender == "女性" and row['gender'] == "女性")) :
+                
                 messages.append(
                     f"```"
-                    f"日付: {row['date']}\n"
-                    f"名前: {row['logins']}\n"
-                    f"性別: {row['gender']}\n"
-                    f"希望: {row['type']}\n"
-                    f"{row['others']}\n"
-                    f"```"
-                    f"https://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}/{row['message_id']}"
-                )
-        else:
-            if row['gender'] == "女性":
-                messages.append(
-                    f"```"
-                    f"日付: {row['date']}\n"
+                    f"日付: {row['date']}（{weekday_jp}）\n"
                     f"名前: {row['logins']}\n"
                     f"性別: {row['gender']}\n"
                     f"希望: {row['type']}\n"
@@ -399,6 +410,7 @@ async def exchange(
             ephemeral=True
         )
         return
+    
     await interaction.response.defer(ephemeral=False)
     try:
         pattern = r"^\d{2}-\d{2}$"
@@ -487,7 +499,21 @@ async def exchange(
         else:
             mention2 = intra2
         #結果を出力する
-        await interaction.followup.send(f"{date1} {intra1} <-> {date2} {intra2}\n\n {mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
+        # 日付の比較: date を datetime オブジェクトに変換
+        try:
+            row_date1 = datetime.strptime(date1, "%Y-%m-%d").date()
+            # 日本語の曜日を取得
+            weekday_jp1 = WEEKDAYS_JP[row_date1.weekday()]
+        except ValueError:
+            weekday_jp1 = "-"
+        try:
+            row_date2 = datetime.strptime(date2, "%Y-%m-%d").date()
+            # 日本語の曜日を取得
+            weekday_jp2 = WEEKDAYS_JP[row_date2.weekday()]
+        except ValueError:
+            weekday_jp2 = "-"
+
+        await interaction.followup.send(f"{date1}（{weekday_jp1}） {intra1} <-> {date2}（{weekday_jp2}） {intra2}\n\n {mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
         # await interaction.followup.send(f"{date1} {intra1} <-> {date2} {intra2}\nヽ(\\*·ᗜ·)ﾉヽ(·ᗜ·\\* )ﾉ\n\n {mention1} {mention2}\n5分程度たってから反映を確認してください\nhttp://bit.ly/3BbrHBs", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
@@ -511,6 +537,7 @@ async def proxy(
             ephemeral=True
         )
         return
+    
     await interaction.response.defer(ephemeral=False)
     try:
         pattern = r"^\d{2}-\d{2}$"
@@ -583,7 +610,14 @@ async def proxy(
         else:
             mention2 = intra2
         #結果を出力する
-        await interaction.followup.send(f" {date} {intra1} -> {intra2}\n\n{mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
+                # 日付の比較: date を datetime オブジェクトに変換
+        try:
+            row_date = datetime.strptime(date, "%Y-%m-%d").date()
+            # 日本語の曜日を取得
+            weekday_jp = WEEKDAYS_JP[row_date.weekday()]
+        except ValueError:
+            weekday_jp = "-"
+        await interaction.followup.send(f" {date}（{weekday_jp}） {intra1} -> {intra2}\n\n{mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
         # await interaction.followup.send(f" {date} {intra1} -> {intra2}\n(¬_¬”)-cԅ(‾⌣‾ԅ)\n\n5分程度たってから反映を確認してください\n{mention1} {mention2}\nhttp://bit.ly/3BbrHBs", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
@@ -607,6 +641,7 @@ async def feedback(
             ephemeral=True
         )
         return
+    
     await interaction.response.defer(ephemeral=False)  # 応答を準備
     if date == "-":
         date = datetime.today().strftime("%Y-%m-%d")    
@@ -666,7 +701,16 @@ async def feedback(
             sheet_feedback = gspreadClient.open_by_key(spreadsheet_id).worksheet(feedback_sheet)
             new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, found_value, details]
             sheet_feedback.append_row(new_data) 
-            await interaction.followup.send(f"feedback:\n日付: {date} \nメンバー: {found_value}\n{details}", ephemeral=False)
+
+            # 日付の比較: date を datetime オブジェクトに変換
+            try:
+                row_date = datetime.strptime(date, "%Y-%m-%d").date()
+                # 日本語の曜日を取得
+                weekday_jp = WEEKDAYS_JP[row_date.weekday()]
+            except ValueError:
+                weekday_jp = "-"
+        
+            await interaction.followup.send(f"feedback:\n日付: {date}（{weekday_jp}）\nメンバー: {found_value}\n{details}", ephemeral=False)
         if none_value != "":
             await interaction.followup.send(f"intra名が誤っています: {none_value}", ephemeral=True)
     else:

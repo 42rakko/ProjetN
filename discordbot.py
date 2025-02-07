@@ -7,6 +7,7 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 import re
+import random
 
 
 # .envファイルを読み込む
@@ -74,6 +75,7 @@ def is_command_channel():
         return ctx.channel.name == "command"  # チャンネル名を"command"に設定
     return commands.check(predicate)
 
+
 # MM-DD形式の日付に適切なYYYY-を付加して返す
 def add_year(input_date: str) -> str:
     # 現在の日付を取得
@@ -101,6 +103,7 @@ def add_year(input_date: str) -> str:
     # yyyy-mm-dd形式で返す
     return f"{target_year}-{input_date}"
 
+
 # def copy2public():
 #     source_sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
 #     target_sheet = gspreadClient.open_by_key(public_spreadsheet_id).worksheet(public_schedule_sheet)   
@@ -109,6 +112,7 @@ def add_year(input_date: str) -> str:
 #     # コピー先にデータを書き込む
 #     target_sheet.update(range_name='A:B', values=columns_to_copy)
 #     #await interaction.followup.send("OK")
+
 
 # @bot.event
 @discordClient.event
@@ -156,7 +160,7 @@ async def when(
     if found_value != "":
         await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>", ephemeral=True)
     else:
-        await interaction.followup.send("intra名が存在しないか担当のアサインがありません")
+        await interaction.followup.send("intra名が存在しない、または担当のアサインがありません")
 
 
 
@@ -170,18 +174,25 @@ async def who(
     date: str,
 ):
     await interaction.response.defer(ephemeral=True)
-    try:
-        pattern = r"^\d{2}-\d{2}$"
-        if not bool(re.match(pattern, date)):
-            await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+
+    if date == "-":
+        date = datetime.today().strftime("%Y-%m-%d")
+    else:
+        try:    
+            date = date.replace('/', '-')
+            pattern = r"^\d{4}-\d{2}-\d{2}$"
+            if not bool(re.match(pattern, date)):
+                pattern = r"^\d{2}-\d{2}$"
+                if not bool(re.match(pattern, date)):
+                    await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+                    return
+                if any(char.isdigit() for char in date):
+                    date = add_year(date)
+                    if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                        raise ValueError
+        except ValueError:
+            await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
             return
-        if any(char.isdigit() for char in date):
-            date = add_year(date)
-            if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
-                raise ValueError
-    except ValueError:
-        await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
-        return
     
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records() #各行にアクセスできるようにする
@@ -194,7 +205,7 @@ async def who(
     if found_value != "":
         await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>", ephemeral=True)
     else:
-        await interaction.followup.send("当日の担当はありません")
+        await interaction.followup.send("指定日の担当はありません")
 
 
 # @bot.command()
@@ -235,18 +246,25 @@ async def request(
         return
 
     await interaction.response.defer(ephemeral=False)
-    try:
-        pattern = r"^\d{2}-\d{2}$"
-        if not bool(re.match(pattern, date)):
-            await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+
+    if date == "-":
+        date = datetime.today().strftime("%Y-%m-%d")
+    else:
+        try:
+            date = date.replace('/', '-')
+            pattern = r"^\d{4}-\d{2}-\d{2}$"
+            if not bool(re.match(pattern, date)):
+                pattern = r"^\d{2}-\d{2}$"
+                if not bool(re.match(pattern, date)):
+                    await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+                    return
+                if any(char.isdigit() for char in date):
+                    date = add_year(date)
+                    if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                        raise ValueError
+        except ValueError:
+            await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
             return
-        if any(char.isdigit() for char in date):
-            date = add_year(date)
-            if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
-                raise ValueError
-    except ValueError:
-        await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
-        return
     today = datetime.today().strftime("%Y-%m-%d")
     if date < today:
         await interaction.followup.send("過去の日付は登録できません", ephemeral=True)
@@ -274,8 +292,12 @@ async def request(
             weekday_jp = WEEKDAYS_JP[row_date.weekday()]
         except ValueError:
             weekday_jp = "-"
-        message = await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}（{weekday_jp}）\n希望: {type}\n{others}", ephemeral=False)
-        # message = await interaction.followup.send(f"名前: {intra}\n性別: {gender}\n日時: {date}\n希望: {type}\nその他: {others}\n\n?o(⁰ꇴ⁰o)三(o⁰ꇴ⁰)o?", ephemeral=False)
+
+        choices = ["", "?o(⁰ꇴ⁰o)三(o⁰ꇴ⁰)o? いらっしゃいませんか", "|ω·）ジーーー", "⁽⁽(ી₍₍⁽⁽(ી₍₍⁽⁽(ી( ˆoˆ )ʃ)₎₎⁾⁾ʃ)₎₎⁾⁾ʃ)₎ ₎ワッショイワッショイ\n",]
+        probabilities = [0.5, 0.2, 0.2, 0.1]
+        fun = random.choices(choices, probabilities)[0]
+
+        message = await interaction.followup.send(f"{fun}\n名前: {intra}\n性別: {gender}\n日時: {date}（{weekday_jp}）\n希望: {type}\n{others}", ephemeral=False)
         new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, type, intra, gender, others, str(message.id)]
         if row_index is not None:
             cell_range = f"A{row_index + 2}:G{row_index + 2}"
@@ -303,19 +325,26 @@ async def rm(
             ephemeral=True
         )
         return
+    
     await interaction.response.defer(ephemeral=True)
-    try:
-        pattern = r"^\d{2}-\d{2}$"
-        if not bool(re.match(pattern, date)):
-            await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+    if date == "-":
+        date = datetime.today().strftime("%Y-%m-%d")
+    else:
+        try:
+            date = date.replace('/', '-')
+            pattern = r"^\d{4}-\d{2}-\d{2}$"
+            if not bool(re.match(pattern, date)):
+                pattern = r"^\d{2}-\d{2}$"
+                if not bool(re.match(pattern, date)):
+                    await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+                    return
+                if any(char.isdigit() for char in date):
+                    date = add_year(date)
+                    if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                        raise ValueError
+        except ValueError:
+            await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
             return
-        if any(char.isdigit() for char in date):
-            date = add_year(date)
-            if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
-                raise ValueError
-    except ValueError:
-        await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
-        return
     
     today = datetime.today().strftime("%Y-%m-%d")
     if date < today:
@@ -384,6 +413,13 @@ async def list(
         await interaction.followup.send("募集中のリクエストはありません", ephemeral=True)
         return
 
+    # choices = ["楽しい１日になりそうです。つらいこともあるかもしれないけど、つらたのしいの精神で過ごしましょう。\n",
+    #             "モチベーションが落ちていますか？校舎にいって友と語らいましょう。校舎に行くのが楽しくなるよ。\n", 
+    #             "BHやMDは大丈夫？やばいと思ったら、すぐにBocalに相談しましょう。一人で悩んで諦めないでね。\n", 
+    #             "\n",]
+    # probabilities = [0.4, 0.3, 0.2, 0.1]
+    # fun = random.choices(choices, probabilities)[0]
+    
     # 各行のデータをまとめ、コードブロックで囲む
     final_message = "\n" + "\n\n".join(messages) + "\n"
     await interaction.followup.send(final_message, ephemeral=True)
@@ -411,25 +447,42 @@ async def exchange(
         return
     
     await interaction.response.defer(ephemeral=False)
-    try:
-        pattern = r"^\d{2}-\d{2}$"
-        if not bool(re.match(pattern, date1)):
-            await interaction.followup.send("date1はMM-DD形式で入力してください", ephemeral=True)
+    if date1 == "-":
+        date1 = datetime.today().strftime("%Y-%m-%d")
+    else:
+        try:
+            date1 = date1.replace('/', '-')
+            pattern = r"^\d{4}-\d{2}-\d{2}$"
+            if not bool(re.match(pattern, date1)):
+                pattern = r"^\d{2}-\d{2}$"
+                if not bool(re.match(pattern, date1)):
+                    await interaction.followup.send("date1はMM-DD形式で入力してください", ephemeral=True)
+                    return
+                if any(char.isdigit() for char in date1):
+                    date1 = add_year(date1)
+                    if date1 != datetime.strptime(date1, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                        raise ValueError
+        except ValueError:
+            await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
             return
-        if not bool(re.match(pattern, date2)):
-            await interaction.followup.send("date2はMM-DD形式で入力してください", ephemeral=True)
+    if date2 == "-":
+        date2 = datetime.today().strftime("%Y-%m-%d")
+    else:
+        try:
+            date2 = date2.replace('/', '-')
+            pattern = r"^\d{4}-\d{2}-\d{2}$"
+            if not bool(re.match(pattern, date2)):
+                pattern = r"^\d{2}-\d{2}$"
+                if not bool(re.match(pattern, date2)):
+                    await interaction.followup.send("date2はMM-DD形式で入力してください", ephemeral=True)
+                    return
+                if any(char.isdigit() for char in date2):
+                    date2 = add_year(date2)
+                    if date2 != datetime.strptime(date2, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                        raise ValueError        
+        except ValueError:
+            await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
             return
-        if any(char.isdigit() for char in date1):
-            date1 = add_year(date1)
-            if date1 != datetime.strptime(date1, "%Y-%m-%d").strftime("%Y-%m-%d"):
-                raise ValueError
-        if any(char.isdigit() for char in date2):
-            date2 = add_year(date2)
-            if date2 != datetime.strptime(date2, "%Y-%m-%d").strftime("%Y-%m-%d"):
-                raise ValueError        
-    except ValueError:
-        await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
-        return
 
     today = datetime.today().strftime("%Y-%m-%d")
     if date1 < today or date2 < today:
@@ -511,8 +564,15 @@ async def exchange(
         except ValueError:
             weekday_jp2 = "-"
 
-        await interaction.followup.send(f"{date1}（{weekday_jp1}） {intra1} <-> {date2}（{weekday_jp2}） {intra2}\n\n {mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
-        # await interaction.followup.send(f"{date1} {intra1} <-> {date2} {intra2}\nヽ(\\*·ᗜ·)ﾉヽ(·ᗜ·\\* )ﾉ\n\n {mention1} {mention2}\n5分程度たってから反映を確認してください\nhttp://bit.ly/3BbrHBs", ephemeral=False)
+
+        choices = ["", 
+                    "ヽ(\\*·ᗜ·)ﾉヽ(·ᗜ·\\* )ﾉ ハイタッチ！\n",
+                    "✧( ु•⌄• )◞◟( •⌄• ू )✧ なかよしー\n",
+                    "(❁´ω`❁)　✧٩(ˊωˋ*)و✧ マッチングー\n"]
+        probabilities = [0.4, 0.3, 0.2, 0.1]
+        fun = random.choices(choices, probabilities)[0]
+
+        await interaction.followup.send(f"{date1}（{weekday_jp1}） {intra1} <-> {date2}（{weekday_jp2}） {intra2}\n{fun}\n {mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
@@ -537,18 +597,24 @@ async def proxy(
         return
     
     await interaction.response.defer(ephemeral=False)
-    try:
-        pattern = r"^\d{2}-\d{2}$"
-        if not bool(re.match(pattern, date)):
-            await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+    if date == "-":
+        date = datetime.today().strftime("%Y-%m-%d")
+    else:
+        try:
+            date = date.replace('/', '-')
+            pattern = r"^\d{4}-\d{2}-\d{2}$"
+            if not bool(re.match(pattern, date)):
+                pattern = r"^\d{2}-\d{2}$"
+                if not bool(re.match(pattern, date)):
+                    await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+                    return
+                if any(char.isdigit() for char in date):
+                    date = add_year(date)
+                    if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                        raise ValueError
+        except ValueError:
+            await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
             return
-        if any(char.isdigit() for char in date):
-            date = add_year(date)
-            if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
-                raise ValueError
-    except ValueError:
-        await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
-        return
     
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(student_sheet)
     students = sheet.col_values(1)
@@ -614,7 +680,15 @@ async def proxy(
             weekday_jp = WEEKDAYS_JP[row_date.weekday()]
         except ValueError:
             weekday_jp = "-"
-        await interaction.followup.send(f" {date}（{weekday_jp}） {intra1} -> {intra2}\n\n{mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
+
+        choices = ["", 
+                   "(¬_¬”)-cԅ(‾⌣‾ԅ) よろしくね！\n", 
+                   "=͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ たのんだよ！\n", 
+                   "=͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ サササササッ\n"]
+        probabilities = [0.4, 0.3, 0.2, 0.1]
+        fun = random.choices(choices, probabilities)[0]
+
+        await interaction.followup.send(f" {date}（{weekday_jp}） {intra1} -> {intra2}\n{fun}\n{mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
         # await interaction.followup.send(f" {date} {intra1} -> {intra2}\n(¬_¬”)-cԅ(‾⌣‾ԅ)\n\n5分程度たってから反映を確認してください\n{mention1} {mention2}\nhttp://bit.ly/3BbrHBs", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
@@ -641,17 +715,20 @@ async def feedback(
     
     await interaction.response.defer(ephemeral=False)  # 応答を準備
     if date == "-":
-        date = datetime.today().strftime("%Y-%m-%d")    
+        date = datetime.today().strftime("%Y-%m-%d")
     else:
         try:
-            pattern = r"^\d{2}-\d{2}$"
+            date = date.replace('/', '-')
+            pattern = r"^\d{4}-\d{2}-\d{2}$"
             if not bool(re.match(pattern, date)):
-                await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
-                return
-            if any(char.isdigit() for char in date):
-                date = add_year(date)
-                if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
-                    raise ValueError
+                pattern = r"^\d{2}-\d{2}$"
+                if not bool(re.match(pattern, date)):
+                    await interaction.followup.send("日付はMM-DD形式で入力してください", ephemeral=True)
+                    return
+                if any(char.isdigit() for char in date):
+                    date = add_year(date)
+                    if date != datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d"):
+                        raise ValueError
         except ValueError:
             await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
             return
@@ -671,6 +748,7 @@ async def feedback(
         write_value = ""
         found_value = ""
         none_value = ""
+        title_value = ""
         # row_logins = data[row_index]['logins']
 
         st_sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(student_sheet)
@@ -689,6 +767,22 @@ async def feedback(
                 found_value = found_value + intra + " "
                 if intra not in data[row_index]['feedback']:
                     write_value = write_value + intra + " "
+    
+                    # column_values = sheet.col_values(3)  # C列を取得
+                    column_values = [cell.strip().lower() for cell in sheet.col_values(3) ]
+                    count = column_values.count(intra)
+
+                    if count == 2:
+                        title_value += intra + " はレベルが上がった。「ただのひと」から「掃除見習い」になった。\n"
+                    elif count == 4:
+                        title_value += intra + " はレベルが上がった。「掃除見習い」から「掃除職人」になった。\n"
+                    elif count == 9:
+                        title_value += intra + " はレベルが上がった。「掃除職人」から「掃除マスター」になった。\n"
+                    elif count == 19:
+                        title_value += intra + " はレベルが上がった。「掃除マスター」から「掃除大王」になった。\n"
+                    elif count == 49:
+                        title_value += intra + " はレベルが上がった。「掃除大王」から「掃除神」になった。\n"
+            
         if write_value != "":
             feedback_data = data[row_index]['feedback']
             feedback_data = feedback_data + " " + write_value
@@ -706,11 +800,10 @@ async def feedback(
             except ValueError:
                 weekday_jp = "-"
         
-            await interaction.followup.send(f"feedback:\n日付: {date}（{weekday_jp}）\nメンバー: {found_value}\n{details}", ephemeral=False)
+            await interaction.followup.send(f"feedback:\n日付: {date}（{weekday_jp}）\nメンバー: {found_value}\n{details}\n\n{title_value}", ephemeral=False)
         if none_value != "":
             await interaction.followup.send(f"intra名が誤っています: {none_value}", ephemeral=True)
     else:
         await interaction.followup.send("日付が誤っています", ephemeral=True)
 
 discordClient.run(DISCORD_TOKEN)
-

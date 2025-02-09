@@ -152,13 +152,33 @@ async def when(
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records() #各行にアクセスできるようにする
     found_value = ""
+    title_value = ""
     for row in data:
         if intra in row['logins']:
             logins_list = row['logins'].split()
             if intra in logins_list:
                 found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
+
+                column_values = [cell.strip().lower() for cell in sheet.col_values(3) ]
+                count = column_values.count(intra)
+
+                if count < 3:
+                    title_value += intra + " のレベルは「ただのひと」です\n"
+                elif count < 5:
+                    title_value += intra + " のレベルは「掃除見習い」です\n"
+                elif count < 10:
+                    title_value += intra + " のレベルは「掃除職人」です\n"
+                elif count < 20:
+                    title_value += intra + " のレベルは「掃除マスター」です\n"
+                elif count < 30:
+                    title_value += intra + " のレベルは「掃除大臣」です\n"
+                elif count < 50:
+                    title_value += intra + " のレベルは「掃除大王」です\n"
+                else:
+                    title_value += intra + " のレベルは「掃除神」です\n"
+
     if found_value != "":
-        await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>", ephemeral=True)
+        await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>\n\n{title_value}", ephemeral=True)
     else:
         await interaction.followup.send("intra名が存在しない、または担当のアサインがありません")
 
@@ -294,7 +314,7 @@ async def request(
             weekday_jp = "-"
 
         choices = ["", "?o(⁰ꇴ⁰o)三(o⁰ꇴ⁰)o? いらっしゃいませんか", "|ω·）ジーーー", "⁽⁽(ી₍₍⁽⁽(ી₍₍⁽⁽(ી( ˆoˆ )ʃ)₎₎⁾⁾ʃ)₎₎⁾⁾ʃ)₎ ₎ワッショイワッショイ\n",]
-        probabilities = [0.5, 0.2, 0.2, 0.1]
+        probabilities = [0.5, 0.25, 0.15, 0.1]
         fun = random.choices(choices, probabilities)[0]
 
         message = await interaction.followup.send(f"{fun}\n名前: {intra}\n性別: {gender}\n日時: {date}（{weekday_jp}）\n希望: {type}\n{others}", ephemeral=False)
@@ -569,7 +589,7 @@ async def exchange(
                     "ヽ(\\*·ᗜ·)ﾉヽ(·ᗜ·\\* )ﾉ ハイタッチ！\n",
                     "✧( ु•⌄• )◞◟( •⌄• ू )✧ なかよしー\n",
                     "(❁´ω`❁)　✧٩(ˊωˋ*)و✧ マッチングー\n"]
-        probabilities = [0.4, 0.3, 0.2, 0.1]
+        probabilities = [0.5, 0.25, 0.15, 0.1]
         fun = random.choices(choices, probabilities)[0]
 
         await interaction.followup.send(f"{date1}（{weekday_jp1}） {intra1} <-> {date2}（{weekday_jp2}） {intra2}\n{fun}\n {mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
@@ -685,7 +705,7 @@ async def proxy(
                    "(¬_¬”)-cԅ(‾⌣‾ԅ) よろしくね！\n", 
                    "=͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ たのんだよ！\n", 
                    "=͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ サササササッ\n"]
-        probabilities = [0.4, 0.3, 0.2, 0.1]
+        probabilities = [0.5, 0.25, 0.15, 0.1]
         fun = random.choices(choices, probabilities)[0]
 
         await interaction.followup.send(f" {date}（{weekday_jp}） {intra1} -> {intra2}\n{fun}\n{mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
@@ -779,7 +799,9 @@ async def feedback(
                     elif count == 9:
                         title_value += intra + " はレベルが上がった。「掃除職人」から「掃除マスター」になった。\n"
                     elif count == 19:
-                        title_value += intra + " はレベルが上がった。「掃除マスター」から「掃除大王」になった。\n"
+                        title_value += intra + " はレベルが上がった。「掃除マスター」から「掃除大臣」になった。\n"
+                    elif count == 29:
+                        title_value += intra + " はレベルが上がった。「掃除大臣」から「掃除大王」になった。\n"
                     elif count == 49:
                         title_value += intra + " はレベルが上がった。「掃除大王」から「掃除神」になった。\n"
             

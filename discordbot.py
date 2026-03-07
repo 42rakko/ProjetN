@@ -153,6 +153,7 @@ async def when(
     data = sheet.get_all_records() #各行にアクセスできるようにする
     found_value = ""
     title_value = ""
+    count = 0
     for row in data:
         if intra in row['logins']:
             logins_list = row['logins'].split()
@@ -162,23 +163,23 @@ async def when(
                 column_values = [cell.strip().lower() for cell in sheet.col_values(3) ]
                 count = column_values.count(intra)
 
-                if count < 3:
-                    title_value += intra + " のレベルは「ただのひと」です\n"
-                elif count < 5:
-                    title_value += intra + " のレベルは「掃除見習い」です\n"
-                elif count < 10:
-                    title_value += intra + " のレベルは「掃除職人」です\n"
-                elif count < 20:
-                    title_value += intra + " のレベルは「掃除マスター」です\n"
-                elif count < 30:
-                    title_value += intra + " のレベルは「掃除大臣」です\n"
-                elif count < 50:
-                    title_value += intra + " のレベルは「掃除大王」です\n"
-                else:
-                    title_value += intra + " のレベルは「掃除神」です\n"
+    if count < 3:
+        title_value += intra + " のレベルは「ただのひと」です\n"
+    elif count < 5:
+        title_value += intra + " のレベルは「掃除見習い」です\n"
+    elif count < 7:
+        title_value += intra + " のレベルは「掃除職人」です\n"
+    elif count < 10:
+        title_value += intra + " のレベルは「掃除マスター」です\n"
+    elif count < 15:
+        title_value += intra + " のレベルは「掃除大臣」です\n"
+    elif count < 20:
+        title_value += intra + " のレベルは「掃除大王」です\n"
+    else:
+        title_value += intra + " のレベルは「掃除神」です\n"
 
     if found_value != "":
-        await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>\n\n{title_value}", ephemeral=True)
+        await interaction.followup.send(f"{found_value}\n<https://x.gd/rwe5d>\n\n{title_value}", ephemeral=True)
     else:
         await interaction.followup.send("intra名が存在しない、または担当のアサインがありません")
 
@@ -223,7 +224,7 @@ async def who(
             found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
 
     if found_value != "":
-        await interaction.followup.send(f"{found_value}\n<http://bit.ly/3BbrHBs>", ephemeral=True)
+        await interaction.followup.send(f"{found_value}\n<https://x.gd/rwe5d>", ephemeral=True)
     else:
         await interaction.followup.send("指定日の担当はありません")
 
@@ -314,7 +315,7 @@ async def request(
             weekday_jp = "-"
 
         choices = ["", "?o(⁰ꇴ⁰o)三(o⁰ꇴ⁰)o? いらっしゃいませんか", "|ω·）ジーーー", "⁽⁽(ી₍₍⁽⁽(ી₍₍⁽⁽(ી( ˆoˆ )ʃ)₎₎⁾⁾ʃ)₎₎⁾⁾ʃ)₎ ₎ワッショイワッショイ\n",]
-        probabilities = [0.5, 0.25, 0.15, 0.1]
+        probabilities = [0.8, 0.1, 0.05, 0.05]
         fun = random.choices(choices, probabilities)[0]
 
         message = await interaction.followup.send(f"{fun}\n名前: {intra}\n性別: {gender}\n日時: {date}（{weekday_jp}）\n希望: {type}\n{others}", ephemeral=False)
@@ -589,10 +590,10 @@ async def exchange(
                     "ヽ(\\*·ᗜ·)ﾉヽ(·ᗜ·\\* )ﾉ ハイタッチ！\n",
                     "✧( ु•⌄• )◞◟( •⌄• ू )✧ なかよしー\n",
                     "(❁´ω`❁)　✧٩(ˊωˋ*)و✧ マッチングー\n"]
-        probabilities = [0.5, 0.25, 0.15, 0.1]
+        probabilities = [0.8, 0.1, 0.05, 0.05]
         fun = random.choices(choices, probabilities)[0]
 
-        await interaction.followup.send(f"{date1}（{weekday_jp1}） {intra1} <-> {date2}（{weekday_jp2}） {intra2}\n{fun}\n {mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
+        await interaction.followup.send(f"{date1}（{weekday_jp1}） {intra1} <-> {date2}（{weekday_jp2}） {intra2}\n{fun}\n {mention1} {mention2}\n5分程度たってから反映を確認してください\n<https://x.gd/rwe5d>", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
@@ -705,11 +706,11 @@ async def proxy(
                    "(¬_¬”)-cԅ(‾⌣‾ԅ) よろしくね！\n", 
                    "=͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ たのんだよ！\n", 
                    "=͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ サササササッ\n"]
-        probabilities = [0.5, 0.25, 0.15, 0.1]
+        probabilities = [0.8, 0.1, 0.05, 0.05]
         fun = random.choices(choices, probabilities)[0]
 
-        await interaction.followup.send(f" {date}（{weekday_jp}） {intra1} -> {intra2}\n{fun}\n{mention1} {mention2}\n5分程度たってから反映を確認してください\n<http://bit.ly/3BbrHBs>", ephemeral=False)
-        # await interaction.followup.send(f" {date} {intra1} -> {intra2}\n(¬_¬”)-cԅ(‾⌣‾ԅ)\n\n5分程度たってから反映を確認してください\n{mention1} {mention2}\nhttp://bit.ly/3BbrHBs", ephemeral=False)
+        await interaction.followup.send(f" {date}（{weekday_jp}） {intra1} -> {intra2}\n{fun}\n{mention1} {mention2}\n5分程度たってから反映を確認してください\n<https://x.gd/rwe5d>", ephemeral=False)
+        # await interaction.followup.send(f" {date} {intra1} -> {intra2}\n(¬_¬”)-cԅ(‾⌣‾ԅ)\n\n5分程度たってから反映を確認してください\n{mention1} {mention2}\nhttps://x.gd/rwe5d", ephemeral=False)
     else:
         await interaction.followup.send("日付またはintra名が誤っています", ephemeral=True)
 
@@ -796,13 +797,13 @@ async def feedback(
                         title_value += intra + " はレベルが上がった。「ただのひと」から「掃除見習い」になった。\n"
                     elif count == 4:
                         title_value += intra + " はレベルが上がった。「掃除見習い」から「掃除職人」になった。\n"
-                    elif count == 9:
+                    elif count == 6:
                         title_value += intra + " はレベルが上がった。「掃除職人」から「掃除マスター」になった。\n"
-                    elif count == 19:
+                    elif count == 9:
                         title_value += intra + " はレベルが上がった。「掃除マスター」から「掃除大臣」になった。\n"
-                    elif count == 29:
+                    elif count == 14:
                         title_value += intra + " はレベルが上がった。「掃除大臣」から「掃除大王」になった。\n"
-                    elif count == 49:
+                    elif count == 19:
                         title_value += intra + " はレベルが上がった。「掃除大王」から「掃除神」になった。\n"
             
         if write_value != "":

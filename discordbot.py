@@ -17,7 +17,7 @@ DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 GOOGLE_KEY_PATH = os.getenv('GOOGLE_KEY_PATH')
 SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
 SCHEDULE_SHEET = os.getenv('SCHEDULE_SHEET')
-REQUEST_SHEET = os.getenv('REQUEST_SHEET')  
+REQUEST_SHEET = os.getenv('REQUEST_SHEET')
 EXCHANGE_SHEET = os.getenv('EXCHANGE_SHEET')
 PROXY_SHEET = os.getenv('PROXY_SHEET')
 FEEDBACK_SHEET = os.getenv('FEEDBACK_SHEET')
@@ -25,10 +25,10 @@ STUDENT_SHEET = os.getenv('STUDENT_SHEET')
 DISCORD_USER_SHEET = os.getenv('DISCORD_USER_SHEET')
 # PUBLIC_SPREADSHEET_ID = os.getenv('PUBLIC_SPREADSHEET_ID')
 # PUBLIC_SCHEDULE_SHEET = os.getenv('PUBLIC_SCHEDULE_SHEET')
-DISCORD_SERVER_ID=691903146909237289
-REQUEST_CHANNEL_ID=1227097579347509249
-CONFIRM_CHANNEL_ID=1227910844990361640
-FEEDBACK_CHANNEL_ID=1227097642610200586
+DISCORD_SERVER_ID = 691903146909237289
+REQUEST_CHANNEL_ID = 1227097579347509249
+CONFIRM_CHANNEL_ID = 1227910844990361640
+FEEDBACK_CHANNEL_ID = 1227097642610200586
 
 # Google Sheets APIの認証設定
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -68,6 +68,7 @@ intents.message_content = True
 discordClient = discord.Client(intents=intents)
 tree = app_commands.CommandTree(discordClient)
 
+
 # 特定のチャンネルのみでコマンドを実行できるようにするため
 # チャンネル名が"command"のときにのみ実行できるデコレーター
 def is_command_channel():
@@ -84,7 +85,7 @@ def add_year(input_date: str) -> str:
     current_month = today.month
     input_month = 0
 
-    #前の２桁（月）をとる
+    # 前の2桁（月）をとる
     match = re.match(r"^\d{2}", input_date)
     if match:
         input_month = int(match.group())
@@ -106,9 +107,9 @@ def add_year(input_date: str) -> str:
 
 # def copy2public():
 #     source_sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
-#     target_sheet = gspreadClient.open_by_key(public_spreadsheet_id).worksheet(public_schedule_sheet)   
+#     target_sheet = gspreadClient.open_by_key(public_spreadsheet_id).worksheet(public_schedule_sheet)
 #     # コピー元の1列目と2列目のデータを取得
-#     columns_to_copy = source_sheet.get_values('A:B')  # A列（1列目）からB列（2列目）を取得    
+#     columns_to_copy = source_sheet.get_values('A:B')  # A列（1列目）からB列（2列目）を取得
 #     # コピー先にデータを書き込む
 #     target_sheet.update(range_name='A:B', values=columns_to_copy)
 #     #await interaction.followup.send("OK")
@@ -119,7 +120,7 @@ def add_year(input_date: str) -> str:
 # @is_command_channel()  # デコレーターを追加
 async def on_ready():
     print("on_ready")
-    await tree.sync() #スラッシュコマンドを同期
+    await tree.sync()  # スラッシュコマンドを同期
 
 
 @tree.command(name="help", description="　　 利用可能なコマンドリストを表示する")
@@ -139,7 +140,7 @@ async def help_command(interaction: discord.Interaction):
 #     await interaction.response.send_message("hello world!", ephemeral=True)
 
 
-#掃除の担当日を表示するコマンド whenの実装
+# 掃除の担当日を表示するコマンド when の実装
 @tree.command(name="when", description=" 　  指定するintra名の掃除担当日を表示する")
 @app_commands.describe(
     intra="intra名",
@@ -150,7 +151,7 @@ async def when(
 ):
     await interaction.response.defer(ephemeral=True)
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
-    data = sheet.get_all_records() #各行にアクセスできるようにする
+    data = sheet.get_all_records()  # 各行にアクセスできるようにする
     found_value = ""
     title_value = ""
     count = 0
@@ -160,7 +161,7 @@ async def when(
             if intra in logins_list:
                 found_value = found_value + "**" + row['date'] + "**  " + row['logins'] + "\n"
 
-                column_values = [cell.strip().lower() for cell in sheet.col_values(3) ]
+                column_values = [cell.strip().lower() for cell in sheet.col_values(3)]
                 count = column_values.count(intra)
 
     if count < 3:
@@ -184,8 +185,7 @@ async def when(
         await interaction.followup.send("intra名が存在しない、または担当のアサインがありません")
 
 
-
-#指定日の掃除担当者を表示するコマンド whoの実装
+# 指定日の掃除担当者を表示するコマンド who の実装
 @tree.command(name="who", description="　　 指定日の担当者を表示する　　　　　　　日付はMM-DD形式")
 @app_commands.describe(
     date="日付 (MM-DD)",
@@ -199,7 +199,7 @@ async def who(
     if date == "-":
         date = datetime.today().strftime("%Y-%m-%d")
     else:
-        try:    
+        try:
             date = date.replace('/', '-')
             pattern = r"^\d{4}-\d{2}-\d{2}$"
             if not bool(re.match(pattern, date)):
@@ -214,10 +214,10 @@ async def who(
         except ValueError:
             await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
             return
-    
+
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
-    data = sheet.get_all_records() #各行にアクセスできるようにする
-    
+    data = sheet.get_all_records()  # 各行にアクセスできるようにする
+
     found_value = ""
     for row in data:
         if date in row['date']:
@@ -252,18 +252,18 @@ async def who(
     ]
 )
 async def request(
-    interaction: discord.Interaction, 
-    date: str, 
-    intra: str, 
+    interaction: discord.Interaction,
+    date: str,
+    intra: str,
     gender: str,
-    type: str, 
+    type: str,
     others: str,
 ):
-    # チャンネル ID をチェック    
+    # チャンネル ID をチェック
     if interaction.channel_id != REQUEST_CHANNEL_ID:
-        await interaction.response.send_message(f"requestコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}で実行してください", 
-            ephemeral=True
-        )
+        await interaction.response.send_message(f"requestコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}で実行してください",
+                                                ephemeral=True
+                                                )
         return
 
     await interaction.response.defer(ephemeral=False)
@@ -293,16 +293,16 @@ async def request(
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records()
     row_index = next(
-        (index for index, row in enumerate(data) 
-        if date == row['date'] and intra in row['logins'].split()), 
+        (index for index, row in enumerate(data)
+         if date == row['date'] and intra in row['logins'].split()),
         None
     )
     if row_index is not None:
         sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(request_sheet)
         data = sheet.get_all_records()
         row_index = next(
-            (index for index, row in enumerate(data) 
-            if row['date'] == date and intra in row['logins'].split()), 
+            (index for index, row in enumerate(data)
+             if row['date'] == date and intra in row['logins'].split()),
             None
         )
 
@@ -336,17 +336,17 @@ async def request(
     intra="intra名",
 )
 async def rm(
-    interaction: discord.Interaction, 
-    date: str, 
-    intra: str, 
+    interaction: discord.Interaction,
+    date: str,
+    intra: str,
 ):
     # チャンネル ID をチェック
     if interaction.channel_id != REQUEST_CHANNEL_ID:
-        await interaction.response.send_message(f"rmコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}で実行してください", 
-            ephemeral=True
-        )
+        await interaction.response.send_message(f"rmコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{REQUEST_CHANNEL_ID}で実行してください",
+                                                ephemeral=True
+                                                )
         return
-    
+
     await interaction.response.defer(ephemeral=True)
     if date == "-":
         date = datetime.today().strftime("%Y-%m-%d")
@@ -366,7 +366,7 @@ async def rm(
         except ValueError:
             await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
             return
-    
+
     today = datetime.today().strftime("%Y-%m-%d")
     if date < today:
         await interaction.followup.send("過去の日付は登録できません", ephemeral=True)
@@ -374,16 +374,15 @@ async def rm(
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(request_sheet)
     data = sheet.get_all_records()
     row_index = next(
-        (index for index, row in enumerate(data) 
-        if row['date'] == date and intra in row['logins'].split()), 
+        (index for index, row in enumerate(data)
+         if row['date'] == date and intra in row['logins'].split()),
         None
     )
     if row_index is not None:
         sheet.delete_rows(row_index + 2)
         await interaction.followup.send("リクエストを削除しました", ephemeral=True)
     else:
-        await interaction.followup.send("そのリクエストは存在しません", ephemeral=True)        
-
+        await interaction.followup.send("そのリクエストは存在しません", ephemeral=True)
 
 
 @tree.command(name="ls", description="　　　 募集中の交換・代行リストを表示する")
@@ -409,7 +408,7 @@ async def list(
     messages = []
     today = datetime.today().date()  # 今日の日付を取得
     for row in data:
-       # 日付の比較: row['date'] を datetime オブジェクトに変換
+        # 日付の比較: row['date'] を datetime オブジェクトに変換
         try:
             row_date = datetime.strptime(row['date'], "%Y-%m-%d").date()
         except ValueError:
@@ -418,7 +417,7 @@ async def list(
             continue  # 過去の日付はスキップ
         # 日本語の曜日を取得
         weekday_jp = WEEKDAYS_JP[row_date.weekday()]
-        
+
         if (gender == row['gender']):
             messages.append(
                 f"```"
@@ -435,12 +434,12 @@ async def list(
         return
 
     # choices = ["楽しい１日になりそうです。つらいこともあるかもしれないけど、つらたのしいの精神で過ごしましょう。\n",
-    #             "モチベーションが落ちていますか？校舎にいって友と語らいましょう。校舎に行くのが楽しくなるよ。\n", 
-    #             "BHやMDは大丈夫？やばいと思ったら、すぐにBocalに相談しましょう。一人で悩んで諦めないでね。\n", 
+    #             "モチベーションが落ちていますか？校舎にいって友と語らいましょう。校舎に行くのが楽しくなるよ。\n",
+    #             "BHやMDは大丈夫？やばいと思ったら、すぐにBocalに相談しましょう。一人で悩んで諦めないでね。\n",
     #             "\n",]
     # probabilities = [0.4, 0.3, 0.2, 0.1]
     # fun = random.choices(choices, probabilities)[0]
-    
+
     # 各行のデータをまとめ、コードブロックで囲む
     final_message = "\n" + "\n\n".join(messages) + "\n"
     await interaction.followup.send(final_message, ephemeral=True)
@@ -462,11 +461,11 @@ async def exchange(
 ):
     # チャンネル ID をチェック
     if interaction.channel_id != CONFIRM_CHANNEL_ID:
-        await interaction.response.send_message(f"exchangeコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{CONFIRM_CHANNEL_ID}で実行してください", 
-            ephemeral=True
-        )
+        await interaction.response.send_message(f"exchangeコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{CONFIRM_CHANNEL_ID}で実行してください",
+                                                ephemeral=True
+                                                )
         return
-    
+
     await interaction.response.defer(ephemeral=False)
     if date1 == "-":
         date1 = datetime.today().strftime("%Y-%m-%d")
@@ -500,7 +499,7 @@ async def exchange(
                 if any(char.isdigit() for char in date2):
                     date2 = add_year(date2)
                     if date2 != datetime.strptime(date2, "%Y-%m-%d").strftime("%Y-%m-%d"):
-                        raise ValueError        
+                        raise ValueError
         except ValueError:
             await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
             return
@@ -513,20 +512,20 @@ async def exchange(
         await interaction.followup.send("同一の日付は対応できません", ephemeral=True)
         return
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
-    data = sheet.get_all_records() #各行にアクセスできるようにする
+    data = sheet.get_all_records()  # 各行にアクセスできるようにする
     row1_index = next(
-        (index for index, row in enumerate(data) 
-        if row['date'] == date1 and intra1 in row['logins'].split()), 
+        (index for index, row in enumerate(data)
+            if row['date'] == date1 and intra1 in row['logins'].split()),
         None
     )
     row2_index = next(
-        (index for index, row in enumerate(data) 
-        if row['date'] == date2 and intra2 in row['logins'].split()), 
+        (index for index, row in enumerate(data)
+            if row['date'] == date2 and intra2 in row['logins'].split()),
         None
     )
     if row1_index is not None and row2_index is not None:
         row1_logins = data[row1_index]['logins'].replace(intra1, intra2)
-        row2_logins = data[row2_index]['logins'].replace(intra2, intra1)  
+        row2_logins = data[row2_index]['logins'].replace(intra2, intra1)
         sheet.update_cell(row1_index + 2, 2, row1_logins)
         sheet.update_cell(row2_index + 2, 2, row2_logins)
         sheet_request = gspreadClient.open_by_key(spreadsheet_id).worksheet(request_sheet)
@@ -544,7 +543,7 @@ async def exchange(
         sheet_exchange.append_row(new_data)
         # copy2public()
 
-        #ここからmention用の文字列を作成する
+        # ここからmention用の文字列を作成する
         sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(discord_sheet)
         # 全データを取得
         data = sheet.get_all_values()  # 全てのデータを2次元リストとして取得
@@ -567,11 +566,11 @@ async def exchange(
         else:
             mention1 = intra1
         mention2 = ""
-        if result2: 
+        if result2:
             mention2 = "<@" + result2[0] + ">"
         else:
             mention2 = intra2
-        #結果を出力する
+        # 結果を出力する
         try:
             row_date1 = datetime.strptime(date1, "%Y-%m-%d").date()
             # 日本語の曜日を取得
@@ -585,11 +584,10 @@ async def exchange(
         except ValueError:
             weekday_jp2 = "-"
 
-
-        choices = ["", 
-                    "ヽ(\\*·ᗜ·)ﾉヽ(·ᗜ·\\* )ﾉ ハイタッチ！\n",
-                    "✧( ु•⌄• )◞◟( •⌄• ू )✧ なかよしー\n",
-                    "(❁´ω`❁)　✧٩(ˊωˋ*)و✧ マッチングー\n"]
+        choices = ["",
+                   "ヽ(\\*·ᗜ·)ﾉヽ(·ᗜ·\\* )ﾉ ハイタッチ！\n",
+                   "✧( ु•⌄• )◞◟( •⌄• ू )✧ なかよしー\n",
+                   "(❁´ω`❁)　✧٩(ˊωˋ*)و✧ マッチングー\n"]
         probabilities = [0.8, 0.1, 0.05, 0.05]
         fun = random.choices(choices, probabilities)[0]
 
@@ -612,11 +610,11 @@ async def proxy(
 ):
     # チャンネル ID をチェック
     if interaction.channel_id != CONFIRM_CHANNEL_ID:
-        await interaction.response.send_message(f"proxyコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{CONFIRM_CHANNEL_ID}で実行してください", 
-            ephemeral=True
-        )
+        await interaction.response.send_message(f"proxyコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{CONFIRM_CHANNEL_ID}で実行してください",
+                                                ephemeral=True
+                                                )
         return
-    
+
     await interaction.response.defer(ephemeral=False)
     if date == "-":
         date = datetime.today().strftime("%Y-%m-%d")
@@ -636,7 +634,7 @@ async def proxy(
         except ValueError:
             await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
             return
-    
+
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(student_sheet)
     students = sheet.col_values(1)
     if not intra2 in students:
@@ -650,8 +648,8 @@ async def proxy(
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
     data = sheet.get_all_records()
     row_index = next(
-        (index for index, row in enumerate(data) 
-        if row['date'] == date and intra1 in row['logins'].split()), 
+        (index for index, row in enumerate(data)
+            if row['date'] == date and intra1 in row['logins'].split()),
         None
         )
     if row_index is not None:
@@ -665,9 +663,9 @@ async def proxy(
         # copy2public()
         sheet_proxy = gspreadClient.open_by_key(spreadsheet_id).worksheet(proxy_sheet)
         new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, intra1, intra2]
-        sheet_proxy.append_row(new_data)        
+        sheet_proxy.append_row(new_data)
 
-        #ここからmention用の文字列を作成する
+        # ここからmention用の文字列を作成する
         sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(discord_sheet)
         # 全データを取得
         data = sheet.get_all_values()  # 全てのデータを2次元リストとして取得
@@ -690,11 +688,11 @@ async def proxy(
         else:
             mention1 = intra1
         mention2 = ""
-        if result2: 
+        if result2:
             mention2 = "<@" + result2[0] + ">"
         else:
             mention2 = intra2
-        #結果を出力する
+        # 結果を出力する
         try:
             row_date = datetime.strptime(date, "%Y-%m-%d").date()
             # 日本語の曜日を取得
@@ -702,9 +700,9 @@ async def proxy(
         except ValueError:
             weekday_jp = "-"
 
-        choices = ["", 
-                   "(¬_¬”)-cԅ(‾⌣‾ԅ) よろしくね！\n", 
-                   "=͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ たのんだよ！\n", 
+        choices = ["",
+                   "(¬_¬”)-cԅ(‾⌣‾ԅ) よろしくね！\n",
+                   "=͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ たのんだよ！\n",
                    "=͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ =͟͟͞͞ʕ•̫͡•ʔ サササササッ\n"]
         probabilities = [0.8, 0.1, 0.05, 0.05]
         fun = random.choices(choices, probabilities)[0]
@@ -729,11 +727,11 @@ async def feedback(
 ):
     # チャンネル ID をチェック
     if interaction.channel_id != FEEDBACK_CHANNEL_ID:
-        await interaction.response.send_message(f"feedbackコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{FEEDBACK_CHANNEL_ID}で実行してください", 
-            ephemeral=True
-        )
+        await interaction.response.send_message(f"feedbackコマンドはhttps://discord.com/channels/{DISCORD_SERVER_ID}/{FEEDBACK_CHANNEL_ID}で実行してください",
+                                                ephemeral=True
+                                                )
         return
-    
+
     await interaction.response.defer(ephemeral=False)  # 応答を準備
     if date == "-":
         date = datetime.today().strftime("%Y-%m-%d")
@@ -753,15 +751,15 @@ async def feedback(
         except ValueError:
             await interaction.followup.send("不正な日付が入力されました", ephemeral=True)
             return
-    
+
     today = datetime.today().strftime("%Y-%m-%d")
     if date > today:
         await interaction.followup.send("未来の日付は対応できません", ephemeral=True)
         return
 
     sheet = gspreadClient.open_by_key(spreadsheet_id).worksheet(schedule_sheet)
-    data = sheet.get_all_records() #各行にアクセスできるようにする
-    
+    data = sheet.get_all_records()  # 各行にアクセスできるようにする
+
     row_index = next((index for index, row in enumerate(data) if row['date'] == date), None)
 
     if row_index is not None:
@@ -776,10 +774,10 @@ async def feedback(
         students = st_sheet.col_values(1)
         for intra in intra_array:
             # if intra in data[row_index]['logins']:
-            #     found_value = found_value + intra + " " 
+            #     found_value = found_value + intra + " "
             #     if intra not in data[row_index]['feedback']:
-            #         write_value = write_value + intra + " " 
-            #     found_value = found_value + intra + " " 
+            #         write_value = write_value + intra + " "
+            #     found_value = found_value + intra + " "
             # else:
             #     none_value = none_value + intra + " "
             if not intra in students:
@@ -788,9 +786,9 @@ async def feedback(
                 found_value = found_value + intra + " "
                 if intra not in data[row_index]['feedback']:
                     write_value = write_value + intra + " "
-    
+
                     # column_values = sheet.col_values(3)  # C列を取得
-                    column_values = [cell.strip().lower() for cell in sheet.col_values(3) ]
+                    column_values = [cell.strip().lower() for cell in sheet.col_values(3)]
                     count = column_values.count(intra)
 
                     if count == 2:
@@ -805,7 +803,7 @@ async def feedback(
                         title_value += intra + " はレベルが上がった。「掃除大臣」から「掃除大王」になった。\n"
                     elif count == 19:
                         title_value += intra + " はレベルが上がった。「掃除大王」から「掃除神」になった。\n"
-            
+
         if write_value != "":
             feedback_data = data[row_index]['feedback']
             feedback_data = feedback_data + " " + write_value
@@ -814,7 +812,7 @@ async def feedback(
         if found_value != "":
             sheet_feedback = gspreadClient.open_by_key(spreadsheet_id).worksheet(feedback_sheet)
             new_data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), date, found_value, details]
-            sheet_feedback.append_row(new_data) 
+            sheet_feedback.append_row(new_data)
 
             try:
                 row_date = datetime.strptime(date, "%Y-%m-%d").date()
@@ -822,7 +820,7 @@ async def feedback(
                 weekday_jp = WEEKDAYS_JP[row_date.weekday()]
             except ValueError:
                 weekday_jp = "-"
-        
+
             await interaction.followup.send(f"feedback:\n日付: {date}（{weekday_jp}）\nメンバー: {found_value}\n{details}\n\n{title_value}", ephemeral=False)
         if none_value != "":
             await interaction.followup.send(f"intra名が誤っています: {none_value}", ephemeral=True)
